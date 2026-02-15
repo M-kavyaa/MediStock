@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediStock - Admin Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    background:#f4f6f9;
+}
+
+/* ================= NAVBAR ================= */
+
+.navbar{
+    width:100%;
+    background:#143a5c;
+    color:white;
+    padding:15px 40px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.logo{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.logo-box{
+    width:50px;
+    height:50px;
+    background:white;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.logo-box img{
+    width:80%;
+    height:80%;
+    object-fit:contain;
+}
+
+
+.logo h2{
+    font-size:18px;
+    font-weight:600;
+}
+
+.nav-links{
+    display:flex;
+    gap:25px;
+    font-size:14px;
+}
+
+.nav-links span{
+    cursor:pointer;
+    transition:0.3s;
+}
+
+.nav-links span:hover{
+    color:#4ecdc4;
+}
+
+/* ================= MAIN ================= */
+
+.main{
+    padding:30px 40px;
+}
+
+/* ================= HEADER ================= */
+
+.page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.page-header h1{
+    font-size:22px;
+    color:#143a5c;
+}
+
+/* ADMIN BADGE */
+
+.admin-badge{
+    background:white;
+    padding:8px 16px;
+    border-radius:25px;
+    font-size:13px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    transition:all 0.3s ease;
+}
+
+.admin-badge:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 14px rgba(0,0,0,0.12);
+}
+
+.admin-icon{
+    width:24px;
+    height:24px;
+    background:#143a5c;
+    color:white;
+    font-size:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+}
+
+/* ================= CARDS ================= */
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;
+    margin-bottom:30px;
+}
+
+.card{
+    background:white;
+    padding:14px 16px;
+    border-radius:8px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.05);
+    transition:all 0.3s ease;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 8px 18px rgba(0,0,0,0.08);
+}
+
+.card-content{
+    display:flex;
+    flex-direction:column;
+}
+
+.card h3{
+    font-size:11px;
+    color:#777;
+    margin-bottom:4px;
+}
+
+.card p{
+    font-size:18px;
+    font-weight:600;
+    margin-bottom:2px;
+}
+
+.card small{
+    font-size:11px;
+    color:#888;
+}
+
+.card-icon{
+    opacity:0.25;
+    transition:all 0.3s ease;
+}
+
+.card:hover .card-icon{
+    opacity:0.6;
+    transform:scale(1.1);
+}
+
+.card-icon svg{
+    width:26px;
+    height:26px;
+}
+
+/* Card Colors */
+.card.green{border-left:4px solid #28a745;}
+.card.red{border-left:4px solid #dc3545;}
+.card.orange{border-left:4px solid #fd7e14;}
+.card.blue{border-left:4px solid #007bff;}
+
+/* ================= SECTION ================= */
+
+.section{
+    background:white;
+    padding:20px;
+    border-radius:8px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.05);
+    margin-bottom:25px;
+}
+
+.section h2{
+    margin-bottom:15px;
+    font-size:16px;
+    color:#143a5c;
+    font-weight:600;
+}
+
+/* ================= TABLE ================= */
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+table th, table td{
+    padding:10px;
+    text-align:left;
+    border-bottom:1px solid #eee;
+    font-size:14px;
+}
+
+table th{
+    background:#f8f9fa;
+    font-weight:500;
+}
+
+table tr:hover{
+    background:#f9fbfd;
+}
+
+/* ================= ALERTS ================= */
+
+.alert-list{
+    list-style:none;
+    padding-left:0;
+}
+
+.alert-list li{
+    padding:8px 0;
+    font-size:14px;
+    color:#444;
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.alert-icon{
+    width:18px;
+    height:18px;
+}
+
+.alert-icon svg{
+    width:18px;
+    height:18px;
+    stroke-width:2;
+}
+
+.alert-icon.warning svg{ stroke:#d39e00; }
+.alert-icon.danger svg{ stroke:#dc3545; }
+.alert-icon.info svg{ stroke:#0d6efd; }
+
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+    <div class="logo">
+        
+        <div class="logo-box">
+            <img src="assets/logo.png" alt="MediStock Logo">
+        </div>
+        
+        <h1>MediStock</h1>
+    </div>
+
+    <div class="nav-links">
+        <span>Dashboard</span>
+        <span>Manage Kendras</span>
+        <span>Medicine Master</span>
+        <span>Stock Overview</span>
+        <span>Transfers</span>
+        <span>Reports</span>
+        <span>Logout</span>
+    </div>
+</div>
+
+<div class="main">
+
+<div class="page-header">
+    <h1>Government Monitoring Dashboard</h1>
+    <div class="admin-badge">
+        <div class="admin-icon">A</div>
+        Admin Kavya
+    </div>
+</div>
+
+<div class="cards">
+
+<div class="card green">
+    <div class="card-content">
+        <h3>Total Kendras</h3>
+        <p>125</p>
+        <small>Active Units</small>
+    </div>
+    <div class="card-icon">
+        <svg fill="none" stroke="#28a745" viewBox="0 0 24 24">
+            <path d="M3 21h18M9 8h6M10 21V8h4v13"/>
+        </svg>
+    </div>
+</div>
+
+<div class="card blue">
+    <div class="card-content">
+        <h3>Total Medicines</h3>
+        <p>3,540</p>
+        <small>Registered</small>
+    </div>
+    <div class="card-icon">
+        <svg fill="none" stroke="#007bff" viewBox="0 0 24 24">
+            <path d="M4 7h16M4 12h16M4 17h16"/>
+        </svg>
+    </div>
+</div>
+
+<div class="card orange">
+    <div class="card-content">
+        <h3>Expiring (30 Days)</h3>
+        <p>87</p>
+        <small>Monitoring Required</small>
+    </div>
+    <div class="card-icon">
+        <svg fill="none" stroke="#fd7e14" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 8v4l3 3"/>
+        </svg>
+    </div>
+</div>
+
+<div class="card red">
+    <div class="card-content">
+        <h3>Expired Stock</h3>
+        <p>12</p>
+        <small>Action Needed</small>
+    </div>
+    <div class="card-icon">
+        <svg fill="none" stroke="#dc3545" viewBox="0 0 24 24">
+            <path d="M6 6l12 12M6 18L18 6"/>
+        </svg>
+    </div>
+</div>
+
+<div class="card blue">
+    <div class="card-content">
+        <h3>Low Stock Kendras</h3>
+        <p>9</p>
+        <small>Below Threshold</small>
+    </div>
+    <div class="card-icon">
+        <svg fill="none" stroke="#007bff" viewBox="0 0 24 24">
+            <path d="M3 3v18h18"/>
+            <path d="M7 14l4-4 4 4 4-6"/>
+        </svg>
+    </div>
+</div>
+
+<div class="card green">
+    <div class="card-content">
+        <h3>Transfers This Month</h3>
+        <p>23</p>
+        <small>Redistributed</small>
+    </div>
+    <div class="card-icon">
+        <svg fill="none" stroke="#28a745" viewBox="0 0 24 24">
+            <path d="M23 4v6h-6"/>
+            <path d="M1 20v-6h6"/>
+        </svg>
+    </div>
+</div>
+
+</div>
+
+<!-- Transfer Recommendation Section -->
+
+<div class="section">
+<h2>Suggested Inter-Kendra Transfers</h2>
+<table>
+<tr>
+<th>Medicine</th>
+<th>From</th>
+<th>To</th>
+<th>Batch No</th>
+<th>Expiry</th>
+<th>Qty</th>
+</tr>
+<tr>
+<td>Paracetamol 500mg</td>
+<td>Kendra A</td>
+<td>Kendra B</td>
+<td>BCH234</td>
+<td>15-03-2026</td>
+<td>120</td>
+</tr>
+<tr>
+<td>Amoxicillin 250mg</td>
+<td>Kendra C</td>
+<td>Kendra D</td>
+<td>AMX908</td>
+<td>02-04-2026</td>
+<td>75</td>
+</tr>
+</table>
+</div>
+
+<!-- System Alerts -->
+
+<div class="section">
+<h2>System Alerts</h2>
+<ul class="alert-list">
+
+<li>
+<span class="alert-icon danger">
+<svg fill="none" viewBox="0 0 24 24">
+<path d="M12 9v4M12 17h.01M10.29 3.86l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.71-3.14l-8-14a2 2 0 0 0-3.42 0z"/>
+</svg>
+</span>
+<span><strong>12 batches expired</strong> across 5 Kendras</span>
+</li>
+
+<li>
+<span class="alert-icon warning">
+<svg fill="none" viewBox="0 0 24 24">
+<path d="M3 3v18h18"/>
+<path d="M7 14l4-4 4 4 4-6"/>
+</svg>
+</span>
+<span><strong>8 medicines</strong> below reorder level</span>
+</li>
+
+<li>
+<span class="alert-icon info">
+<svg fill="none" viewBox="0 0 24 24">
+<path d="M23 4v6h-6"/>
+<path d="M1 20v-6h6"/>
+<path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"/>
+<path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"/>
+</svg>
+</span>
+<span><strong>3 transfer recommendations</strong> pending approval</span>
+</li>
+
+</ul>
+</div>
+
+</div>
+
+</body>
+</html>
