@@ -7,6 +7,7 @@ kendra_name varchar(255),
 state varchar(100),
 district varchar(100),
 pin varchar(20),
+-- pharmacist varchar(50),
 address text);
 INSERT INTO kendras (sno, kendra_code, kendra_name, state, district, pin, address) VALUES
 (1, 'JA001', 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', 'Karnataka', 'Bengaluru', '560001', 'MG Road, Bengaluru, Karnataka'),
@@ -48,3 +49,69 @@ INSERT INTO users (username, password, role, kendra_code) VALUES
 ('JA001', 'shop123', 'SHOPKEEPER', 'JA001'),
 ('JA002', 'shop123', 'SHOPKEEPER', 'JA002'),
 ('JA003', 'shop123', 'SHOPKEEPER', 'JA003');
+
+
+
+CREATE TABLE medicines (
+    medicine_id INT PRIMARY KEY AUTO_INCREMENT,
+    generic_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    composition TEXT,
+    group_name TEXT
+);
+
+INSERT INTO medicines (generic_name, price, composition, group_name) VALUES
+('Paracetamol 500mg', 15.00, 'Paracetamol', 'Analgesics'),
+('Azithromycin 250mg', 30.00, 'Azithromycin', 'Antibiotics'),
+('ORS Powder', 18.00, 'Oral Rehydration Salts', 'Electrolytes'),
+('Metformin 500mg', 22.00, 'Metformin', 'Anti-diabetic'),
+('Amoxicillin 500mg', 35.00, 'Amoxicillin', 'Antibiotics'),
+('Cetirizine 10mg', 10.00, 'Cetirizine', 'Antihistamines'),
+('Pantoprazole 40mg', 25.00, 'Pantoprazole', 'Antacids');
+
+CREATE TABLE inventory (
+    inventory_id INT PRIMARY KEY AUTO_INCREMENT,
+    kendra_code VARCHAR(50),
+    medicine_id INT,
+    batch_no VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL,
+    expiry_date DATE NOT NULL,
+    FOREIGN KEY (kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
+);
+
+-- Seed some inventory with standard, low stock, near expiry, and expired
+INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES
+('JA001', 1, 'BCH-P001', 500, DATE_ADD(CURDATE(), INTERVAL 12 MONTH)),
+('JA001', 2, 'BCH-A001', 20, DATE_ADD(CURDATE(), INTERVAL 20 DAY)), -- Expiring soon
+('JA001', 3, 'BCH-O001', 0, DATE_ADD(CURDATE(), INTERVAL 6 MONTH)), -- Stockout
+('JA001', 4, 'BCH-M001', 100, DATE_SUB(CURDATE(), INTERVAL 5 DAY)), -- Expired
+
+('JA002', 2, 'BCH-A002', 500, DATE_ADD(CURDATE(), INTERVAL 18 MONTH)), -- Healthy stock of Azithromycin
+('JA003', 3, 'BCH-O002', 300, DATE_ADD(CURDATE(), INTERVAL 14 MONTH)); 
+
+CREATE TABLE sales (
+    sale_id INT PRIMARY KEY AUTO_INCREMENT,
+    kendra_code VARCHAR(50),
+    medicine_id INT,
+    batch_no VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL,
+    total_amount DECIMAL(10,2),
+    customer_mobile VARCHAR(20),
+    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
+);
+
+CREATE TABLE transfers (
+    transfer_id INT PRIMARY KEY AUTO_INCREMENT,
+    medicine_id INT,
+    from_kendra_code VARCHAR(50),
+    to_kendra_code VARCHAR(50),
+    quantity INT,
+    status ENUM('Requested', 'Approved', 'In Transit', 'Completed') DEFAULT 'Requested',
+    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (from_kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (to_kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
+);
