@@ -1,460 +1,859 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MediStock - Kendra Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediStock - Kendra Dashboard</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
-}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
 
-body{
-    background:#f4f6f9;
-}
+        body {
+            background: #f4f6f9;
+        }
 
-/* NAVBAR */
+        /* NAVBAR */
 
-.navbar{
-    width:100%;
-    background:#143a5c;
-    color:white;
-    padding:15px 40px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    box-shadow:0 2px 8px rgba(0,0,0,0.08);
-}
+        .navbar {
+            width: 100%;
+            background: #143a5c;
+            color: white;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
 
-.logo{
-    display:flex;
-    align-items:center;
-    gap:15px;
-}
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
 
-.logo-box{
-    width:50px;
-    height:50px;
-    background:white;
-    border-radius:10px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-}
+        .logo-box {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
 
-.logo-box img{
-    width:80%;
-    height:80%;
-    object-fit:contain;
-}
+        .logo-box img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+        }
 
 
-.logo-box:hover{
-    transform:rotate(8deg);
-}
+        .logo-box:hover {
+            transform: rotate(8deg);
+        }
 
-.logo h2{
-    font-size:18px;
-    font-weight:600;
-}
+        .logo h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
 
-.nav-links{
-    display:flex;
-    gap:22px;
-    font-size:14px;
-}
+        .nav-links {
+            display: flex;
+            gap: 22px;
+            font-size: 14px;
+        }
 
-.nav-links span{
-    cursor:pointer;
-    position:relative;
-    transition:0.3s;
-}
+        .nav-links span {
+            cursor: pointer;
+            position: relative;
+            transition: 0.3s;
+        }
 
-.nav-links span::after{
-    content:"";
-    position:absolute;
-    bottom:-4px;
-    left:0;
-    width:0%;
-    height:2px;
-    background:#4ecdc4;
-    transition:0.3s;
-}
+        .nav-links span::after {
+            content: "";
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0%;
+            height: 2px;
+            background: #4ecdc4;
+            transition: 0.3s;
+        }
 
-.nav-links span:hover{
-    color:#4ecdc4;
-}
+        .nav-links span:hover {
+            color: #4ecdc4;
+        }
 
-.nav-links span:hover::after{
-    width:100%;
-}
+        .nav-links span:hover::after {
+            width: 100%;
+        }
 
-/* MAIN */
+        /* MAIN */
 
-.main{
-    padding:30px 40px;
-    animation:fadeIn 0.6s ease-in-out;
-}
+        .main {
+            padding: 30px 40px;
+            animation: fadeIn 0.6s ease-in-out;
+        }
 
-@keyframes fadeIn{
-    from{opacity:0; transform:translateY(8px);}
-    to{opacity:1; transform:translateY(0);}
-}
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
 
-/* HEADER */
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-.page-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:25px;
-}
+        /* HEADER */
 
-.page-header h1{
-    font-size:22px;
-    color:#143a5c;
-}
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
 
-.role-badge{
-    background:white;
-    padding:8px 16px;
-    border-radius:25px;
-    font-size:13px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.08);
-}
+        .page-header h1 {
+            font-size: 22px;
+            color: #143a5c;
+        }
 
-/* KPI CARDS */
+        .role-badge {
+            background: white;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 13px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
 
-.cards{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-    gap:14px;
-    margin-bottom:30px;
-}
+        /* KPI CARDS */
 
-.card{
-    background:white;
-    padding:16px;
-    border-radius:10px;
-    box-shadow:0 4px 10px rgba(0,0,0,0.05);
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    transition:0.3s ease;
-}
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 30px;
+        }
 
-.card:hover{
-    transform:translateY(-6px);
-    box-shadow:0 12px 24px rgba(0,0,0,0.12);
-}
+        .card {
+            background: white;
+            padding: 16px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.3s ease;
+        }
 
-.card-content{
-    display:flex;
-    flex-direction:column;
-}
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+        }
 
-.card h3{
-    font-size:12px;
-    color:#777;
-    margin-bottom:6px;
-}
+        .card-content {
+            display: flex;
+            flex-direction: column;
+        }
 
-.card p{
-    font-size:20px;
-    font-weight:600;
-}
+        .card h3 {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 6px;
+        }
 
-.card small{
-    font-size:11px;
-    color:#888;
-}
+        .card p {
+            font-size: 20px;
+            font-weight: 600;
+        }
 
-.card-icon{
-    opacity:0.18;
-    transition:0.3s;
-}
+        .card small {
+            font-size: 11px;
+            color: #888;
+        }
 
-.card:hover .card-icon{
-    transform:scale(1.05);
-    opacity:0.32;
-}
+        .card-icon {
+            opacity: 0.18;
+            transition: 0.3s;
+        }
 
-.card-icon svg{
-    width:32px;
-    height:32px;
-}
+        .card:hover .card-icon {
+            transform: scale(1.05);
+            opacity: 0.32;
+        }
 
-.card.blue{border-left:4px solid #007bff;}
-.card.green{border-left:4px solid #28a745;}
-.card.red{border-left:4px solid #dc3545;}
-.card.orange{border-left:4px solid #fd7e14;}
+        .card-icon svg {
+            width: 32px;
+            height: 32px;
+        }
 
-/* SECTION */
+        .card.blue {
+            border-left: 4px solid #007bff;
+        }
 
-.section{
-    background:white;
-    padding:22px;
-    border-radius:10px;
-    box-shadow:0 4px 10px rgba(0,0,0,0.05);
-    margin-bottom:25px;
-    transition:0.3s;
-}
+        .card.green {
+            border-left: 4px solid #28a745;
+        }
 
-.section:hover{
-    box-shadow:0 10px 25px rgba(0,0,0,0.08);
-}
+        .card.red {
+            border-left: 4px solid #dc3545;
+        }
 
-.section h2{
-    margin-bottom:15px;
-    font-size:16px;
-    color:#143a5c;
-}
+        .card.orange {
+            border-left: 4px solid #fd7e14;
+        }
 
-/* TABLE */
+        /* SECTION */
 
-table{
-    width:100%;
-    border-collapse:collapse;
-}
+        .section {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+            transition: 0.3s;
+        }
 
-table th, table td{
-    padding:12px;
-    text-align:left;
-    border-bottom:1px solid #eee;
-    font-size:14px;
-    transition:0.2s;
-}
+        .section:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
 
-table th{
-    background:#f8f9fa;
-}
+        .section h2 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #143a5c;
+        }
 
-table tr:hover{
-    background:#eef5ff;
-}
+        /* TABLE */
 
-/* TWO COLUMN */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-.row{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
-}
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            transition: 0.2s;
+        }
 
-/* LOW STOCK */
+        table th {
+            background: #f8f9fa;
+        }
 
-.low-stock-item{
-    padding:12px 0;
-    font-size:15px;
-    border-bottom:1px solid #eee;
-    transition:0.2s;
-}
+        table tr:hover {
+            background: #eef5ff;
+        }
 
-.low-stock-item:hover{
-    padding-left:6px;
-    background:#f9fbff;
-}
+        /* TWO COLUMN */
 
-.low-stock-item:last-child{
-    border-bottom:none;
-}
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
 
-/* NOTIFICATIONS */
+        /* LOW STOCK */
 
-.notification-list{
-    list-style:none;
-}
+        .low-stock-item {
+            padding: 12px 0;
+            font-size: 15px;
+            border-bottom: 1px solid #eee;
+            transition: 0.2s;
+        }
 
-.notification-list li{
-    padding:12px 0;
-    border-bottom:1px solid #eee;
-    display:flex;
-    justify-content:space-between;
-    font-size:14px;
-    transition:0.2s;
-}
+        .low-stock-item:hover {
+            padding-left: 6px;
+            background: #f9fbff;
+        }
 
-.notification-list li:hover{
-    background:#f9fbff;
-    padding-left:6px;
-}
+        .low-stock-item:last-child {
+            border-bottom: none;
+        }
 
-.time{
-    font-size:12px;
-    color:#888;
-}
+        /* NOTIFICATIONS */
 
-</style>
+        .notification-list {
+            list-style: none;
+        }
+
+        .notification-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .notification-list li:hover {
+            background: #f9fbff;
+            padding-left: 6px;
+        }
+
+        .time {
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* New Form & Section Styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #444;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #143a5c;
+            box-shadow: 0 0 0 3px rgba(20, 58, 92, 0.1);
+        }
+
+        .btn {
+            padding: 10px 24px;
+            background: #143a5c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: #0d2840;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-bar {
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .search-bar input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            width: 280px;
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            background: #f8f9fa;
+            transition: 0.3s;
+        }
+
+        .search-bar input:focus {
+            border-color: #143a5c;
+            background: white;
+        }
+
+        /* Scrollbar for tables */
+        .table-container {
+            max-height: 380px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb {
+            background: #ccd5df;
+            border-radius: 10px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #143a5c;
+        }
+
+        .table-container table th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #f8f9fa;
+        }
+
+        .report-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .report-card {
+            background: white;
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 4px solid #143a5c;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            transition: 0.3s;
+        }
+
+        .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+        }
+
+        .report-card h4 {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .report-card p {
+            font-size: 22px;
+            font-weight: 600;
+            color: #143a5c;
+        }
+    </style>
 </head>
 
 <body>
 
-<div class="navbar">
-    <div class="logo">
-        <div class="logo-box">
-            <img src="assets/logo.png" alt="MediStock Logo">
+    <div class="navbar">
+        <div class="logo">
+            <div class="logo-box">
+                <img src="assets/logo.png" alt="MediStock Logo">
+            </div>
+
+            <h1>MediStock </h1>
         </div>
-        
-        <h1>MediStock </h1>
+
+        <div class="nav-links">
+            <span>Dashboard</span>
+            <span>Add Stock</span>
+            <span>Sales Entry</span>
+            <span>Inventory</span>
+            <span>Reports</span>
+            <span>Logout</span>
+        </div>
     </div>
 
-    <div class="nav-links">
-        <span>Dashboard</span>
-        <span>Add Stock</span>
-        <span>Sales Entry</span>
-        <span>Inventory</span>
-        <span>Reports</span>
-        <span>Logout</span>
+    <div class="main">
+
+        <div class="page-header">
+            <h1 id="main-title">Kendra Staff Dashboard</h1>
+            <div class="role-badge">KA001 - Jaipur Central</div>
+        </div>
+
+        <div id="dashboard-view-content">
+
+            <!-- KPI CARDS -->
+
+            <div class="cards">
+
+                <div class="card blue">
+                    <div class="card-content">
+                        <h3>Total Medicines</h3>
+                        <p>120</p>
+                        <small>Active SKUs</small>
+                    </div>
+                    <div class="card-icon">
+                        <svg fill="none" stroke="#007bff" stroke-width="1.4" stroke-linecap="round"
+                            stroke-linejoin="round" viewBox="0 0 24 24">
+                            <path d="M4 7h16M4 12h16M4 17h16" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="card green">
+                    <div class="card-content">
+                        <h3>Total Stock Units</h3>
+                        <p>5,420</p>
+                        <small>Available Quantity</small>
+                    </div>
+                    <div class="card-icon">
+                        <svg fill="none" stroke="#28a745" stroke-width="1.4" stroke-linecap="round"
+                            stroke-linejoin="round" viewBox="0 0 24 24">
+                            <path d="M3 3v18h18" />
+                            <path d="M7 14l4-4 4 4 4-6" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="card red">
+                    <div class="card-content">
+                        <h3>Expiring Soon</h3>
+                        <p>15</p>
+                        <small>Within 30 Days</small>
+                    </div>
+                    <div class="card-icon">
+                        <svg fill="none" stroke="#dc3545" stroke-width="1.4" stroke-linecap="round"
+                            stroke-linejoin="round" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M12 8v4l3 3" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="card orange">
+                    <div class="card-content">
+                        <h3>Low Stock Items</h3>
+                        <p>8</p>
+                        <small>Below Minimum Level</small>
+                    </div>
+                    <div class="card-icon">
+                        <svg fill="none" stroke="#fd7e14" stroke-width="1.4" stroke-linecap="round"
+                            stroke-linejoin="round" viewBox="0 0 24 24">
+                            <path d="M12 2l10 18H2L12 2z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="card blue">
+                    <div class="card-content">
+                        <h3>Today's Sales</h3>
+                        <p>₹ 3,250</p>
+                        <small>Retail Collection</small>
+                    </div>
+                    <div class="card-icon">
+                        <svg fill="none" stroke="#007bff" stroke-width="1.4" stroke-linecap="round"
+                            stroke-linejoin="round" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" />
+                            <path d="M8 12h8" />
+                        </svg>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- EXPIRY STATUS -->
+
+            <div class="section">
+                <h2>Expiry Status Overview</h2>
+                <table>
+                    <tr>
+                        <th>Medicine</th>
+                        <th>Batch No</th>
+                        <th>Quantity</th>
+                        <th>Expiry Date</th>
+                        <th>Status</th>
+                    </tr>
+                    <tr>
+                        <td>Paracetamol</td>
+                        <td>M06-323</td>
+                        <td>300</td>
+                        <td>22-11-2026</td>
+                        <td style="color:red;">Expired</td>
+                    </tr>
+                    <tr>
+                        <td>Azithromycin</td>
+                        <td>M06-091</td>
+                        <td>100</td>
+                        <td>15-03-2026</td>
+                        <td style="color:orange;">Expiring Soon</td>
+                    </tr>
+                    <tr>
+                        <td>ORS Powder</td>
+                        <td>M09-956</td>
+                        <td>200</td>
+                        <td>10-08-2026</td>
+                        <td style="color:green;">Safe</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- LOW STOCK + NOTIFICATIONS -->
+
+            <div class="row">
+
+                <div class="section">
+                    <h2>Low Stock Alerts</h2>
+                    <div class="low-stock-item"><strong>8 medicines</strong> below reorder level</div>
+                    <div class="low-stock-item"><strong>2 items</strong> need urgent restock</div>
+                    <div class="low-stock-item"><strong>3 batches</strong> expiring this week</div>
+                </div>
+
+                <div class="section">
+                    <h2>Notification Centre</h2>
+                    <ul class="notification-list">
+                        <li><span>Transfer recommendation generated</span><span class="time">2 min ago</span></li>
+                        <li><span>Paracetamol batch expiring in 15 days</span><span class="time">15 min ago</span></li>
+                        <li><span>2 expired batches detected</span><span class="time">1 hour ago</span></li>
+                        <li><span>Monthly sales report available</span><span class="time">Today 9:15 AM</span></li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div> <!-- Close dashboard-view-content -->
+
+        <!-- ADD STOCK VIEW -->
+        <div id="add-stock-section" class="section" style="display:none; padding: 25px;">
+            <h2>Add New Stock Entry</h2>
+            <form style="max-width: 650px; margin-top: 25px;">
+                <div class="form-group">
+                    <label>Medicine Name</label>
+                    <input type="text" placeholder="Start typing to search...">
+                </div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>Batch Number</label>
+                        <input type="text" placeholder="e.g. BCH-XYZ">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity Add</label>
+                        <input type="number" placeholder="Enter quantity">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>Manufacturing Date</label>
+                        <input type="date">
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry Date</label>
+                        <input type="date">
+                    </div>
+                </div>
+                <button type="button" class="btn" style="margin-top: 15px;">Update Stock</button>
+            </form>
+        </div>
+
+        <!-- SALES ENTRY VIEW -->
+        <div id="sales-section" class="section" style="display:none; padding: 25px;">
+            <h2>Daily Sales Entry</h2>
+            <form style="max-width: 650px; margin-top: 25px;">
+                <div class="form-group">
+                    <label>Customer Mobile (Optional)</label>
+                    <input type="text" placeholder="10-digit mobile number">
+                </div>
+                <div class="form-group">
+                    <label>Select Medicine</label>
+                    <select>
+                        <option value="">-- Choose from available stock --</option>
+                        <option>Paracetamol 500mg</option>
+                        <option>Azithromycin 250mg</option>
+                        <option>ORS Powder</option>
+                        <option>Metformin 500mg</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>Quantity Sold</label>
+                        <input type="number" placeholder="Units">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Amount (₹)</label>
+                        <input type="number" placeholder="Amount collected" readonly value="0"
+                            style="background:#f4f6f9; cursor:not-allowed;">
+                    </div>
+                </div>
+                <button type="button" class="btn" style="margin-top: 15px; background: #28a745;">Generate Bill & Record
+                    Sale</button>
+            </form>
+        </div>
+
+        <!-- INVENTORY VIEW -->
+        <div id="inventory-section" class="section" style="display:none; padding: 25px;">
+            <h2>Current Inventory Status</h2>
+            <div class="search-bar">
+                <input type="text" id="inventorySearch" placeholder="Search medicines by name or batch...">
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Medicine</th>
+                            <th>Batch No.</th>
+                            <th>In Stock</th>
+                            <th>Unit Price</th>
+                            <th>Expiry Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr>
+                            <td>Paracetamol 500mg</td>
+                            <td>M06-323</td>
+                            <td>300</td>
+                            <td>₹ 15</td>
+                            <td>22-11-2026</td>
+                            <td style="color:#dc3545; font-weight: 500;">Expired</td>
+                        </tr>
+                        <tr>
+                            <td>Azithromycin 250mg</td>
+                            <td>M06-091</td>
+                            <td>100</td>
+                            <td>₹ 30</td>
+                            <td>15-03-2026</td>
+                            <td style="color:#fd7e14; font-weight: 500;">Expiring Soon</td>
+                        </tr>
+                        <tr>
+                            <td>ORS Powder</td>
+                            <td>M09-956</td>
+                            <td>200</td>
+                            <td>₹ 18</td>
+                            <td>10-08-2026</td>
+                            <td style="color:#28a745; font-weight: 500;">Safe</td>
+                        </tr>
+                        <tr>
+                            <td>Metformin 500mg</td>
+                            <td>M11-204</td>
+                            <td>450</td>
+                            <td>₹ 22</td>
+                            <td>05-12-2027</td>
+                            <td style="color:#28a745; font-weight: 500;">Safe</td>
+                        </tr>
+                        <tr>
+                            <td>Amoxicillin 500mg</td>
+                            <td>M12-101</td>
+                            <td>15</td>
+                            <td>₹ 35</td>
+                            <td>01-08-2026</td>
+                            <td style="color:#fd7e14; font-weight: 500;">Low Stock</td>
+                        </tr>
+                        <tr>
+                            <td>Cetirizine 10mg</td>
+                            <td>M01-502</td>
+                            <td>850</td>
+                            <td>₹ 10</td>
+                            <td>10-10-2028</td>
+                            <td style="color:#28a745; font-weight: 500;">Safe</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- REPORTS VIEW -->
+        <div id="reports-section" class="section" style="display:none; padding: 25px;">
+            <h2>Kendra Analytics & Reports</h2>
+
+            <div class="report-cards" style="margin-top: 20px;">
+                <div class="report-card">
+                    <h4>Monthly Sales</h4>
+                    <p>₹ 45,200</p>
+                </div>
+                <div class="report-card" style="border-left-color: #28a745;">
+                    <h4>Medicines Sold</h4>
+                    <p>1,240 Units</p>
+                </div>
+                <div class="report-card" style="border-left-color: #dc3545;">
+                    <h4>Expired Write-offs</h4>
+                    <p>₹ 1,150</p>
+                </div>
+                <div class="report-card" style="border-left-color: #fd7e14;">
+                    <h4>Urgent Reorders</h4>
+                    <p>8 Items</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 35px; border-top: 1px solid #eee; padding-top: 25px;">
+                <h3>Generate Report</h3>
+                <p style="font-size: 13px; color: #666; margin-top: 5px;">Select criteria to download PDF or export to
+                    Excel file.</p>
+
+                <div style="display: flex; gap: 15px; margin-top: 20px; align-items: center; flex-wrap: wrap;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <select style="width: 200px;">
+                            <option>Sales Report</option>
+                            <option>Inventory Report</option>
+                            <option>Expiry Report</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <select style="width: 200px;">
+                            <option>Last 7 Days</option>
+                            <option>This Month</option>
+                            <option>Last Month</option>
+                            <option>Custom Date Range</option>
+                        </select>
+                    </div>
+                    <button class="btn" style="background:#143a5c;">📥 Download PDF</button>
+                    <button class="btn" style="background:#28a745;">📊 Export to Excel</button>
+                </div>
+            </div>
+        </div>
+
     </div>
-</div>
+    <script>
+        const navLinks = document.querySelectorAll('.nav-links span');
+        const mainTitle = document.getElementById('main-title');
 
-<div class="main">
+        const views = {
+            "Dashboard": document.getElementById('dashboard-view-content'),
+            "Add Stock": document.getElementById('add-stock-section'),
+            "Sales Entry": document.getElementById('sales-section'),
+            "Inventory": document.getElementById('inventory-section'),
+            "Reports": document.getElementById('reports-section')
+        };
 
-<div class="page-header">
-    <h1>Kendra Staff Dashboard</h1>
-    <div class="role-badge">KA001 - Jaipur Central</div>
-</div>
+        function switchView(tabName) {
+            // Hide all views
+            Object.values(views).forEach(v => {
+                if (v) v.style.display = 'none';
+            });
 
-<!-- KPI CARDS -->
+            if (views[tabName]) {
+                views[tabName].style.display = 'block';
 
-<div class="cards">
+                // Set header title
+                mainTitle.innerText = tabName === "Dashboard" ? "Kendra Staff Dashboard" : tabName;
+            }
+        }
 
-<div class="card blue">
-<div class="card-content">
-<h3>Total Medicines</h3>
-<p>120</p>
-<small>Active SKUs</small>
-</div>
-<div class="card-icon">
-<svg fill="none" stroke="#007bff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-<path d="M4 7h16M4 12h16M4 17h16"/>
-</svg>
-</div>
-</div>
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const tabName = link.innerText.trim();
+                if (tabName === "Logout") {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                switchView(tabName);
+            });
+        });
 
-<div class="card green">
-<div class="card-content">
-<h3>Total Stock Units</h3>
-<p>5,420</p>
-<small>Available Quantity</small>
-</div>
-<div class="card-icon">
-<svg fill="none" stroke="#28a745" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-<path d="M3 3v18h18"/>
-<path d="M7 14l4-4 4 4 4-6"/>
-</svg>
-</div>
-</div>
-
-<div class="card red">
-<div class="card-content">
-<h3>Expiring Soon</h3>
-<p>15</p>
-<small>Within 30 Days</small>
-</div>
-<div class="card-icon">
-<svg fill="none" stroke="#dc3545" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-<circle cx="12" cy="12" r="9"/>
-<path d="M12 8v4l3 3"/>
-</svg>
-</div>
-</div>
-
-<div class="card orange">
-<div class="card-content">
-<h3>Low Stock Items</h3>
-<p>8</p>
-<small>Below Minimum Level</small>
-</div>
-<div class="card-icon">
-<svg fill="none" stroke="#fd7e14" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-<path d="M12 2l10 18H2L12 2z"/>
-</svg>
-</div>
-</div>
-
-<div class="card blue">
-<div class="card-content">
-<h3>Today's Sales</h3>
-<p>₹ 3,250</p>
-<small>Retail Collection</small>
-</div>
-<div class="card-icon">
-<svg fill="none" stroke="#007bff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-<rect x="3" y="3" width="18" height="18"/>
-<path d="M8 12h8"/>
-</svg>
-</div>
-</div>
-
-</div>
-
-<!-- EXPIRY STATUS -->
-
-<div class="section">
-<h2>Expiry Status Overview</h2>
-<table>
-<tr>
-<th>Medicine</th>
-<th>Batch No</th>
-<th>Quantity</th>
-<th>Expiry Date</th>
-<th>Status</th>
-</tr>
-<tr>
-<td>Paracetamol</td>
-<td>M06-323</td>
-<td>300</td>
-<td>22-11-2026</td>
-<td style="color:red;">Expired</td>
-</tr>
-<tr>
-<td>Azithromycin</td>
-<td>M06-091</td>
-<td>100</td>
-<td>15-03-2026</td>
-<td style="color:orange;">Expiring Soon</td>
-</tr>
-<tr>
-<td>ORS Powder</td>
-<td>M09-956</td>
-<td>200</td>
-<td>10-08-2026</td>
-<td style="color:green;">Safe</td>
-</tr>
-</table>
-</div>
-
-<!-- LOW STOCK + NOTIFICATIONS -->
-
-<div class="row">
-
-<div class="section">
-<h2>Low Stock Alerts</h2>
-<div class="low-stock-item"><strong>8 medicines</strong> below reorder level</div>
-<div class="low-stock-item"><strong>2 items</strong> need urgent restock</div>
-<div class="low-stock-item"><strong>3 batches</strong> expiring this week</div>
-</div>
-
-<div class="section">
-<h2>Notification Centre</h2>
-<ul class="notification-list">
-<li><span>Transfer recommendation generated</span><span class="time">2 min ago</span></li>
-<li><span>Paracetamol batch expiring in 15 days</span><span class="time">15 min ago</span></li>
-<li><span>2 expired batches detected</span><span class="time">1 hour ago</span></li>
-<li><span>Monthly sales report available</span><span class="time">Today 9:15 AM</span></li>
-</ul>
-</div>
-
-</div>
-
-</div>
+        // Simple search functionality for Inventory Table
+        document.getElementById('inventorySearch')?.addEventListener('keyup', function () {
+            let filter = this.value.toLowerCase();
+            let rows = document.querySelectorAll('#inventoryTableBody tr');
+            rows.forEach(row => {
+                let text = row.innerText.toLowerCase();
+                row.style.display = text.includes(filter) ? "" : "none";
+            });
+        });
+    </script>
 </body>
+
 </html>
