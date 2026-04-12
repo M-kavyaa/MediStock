@@ -93,6 +93,7 @@ INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date
 CREATE TABLE sales (
     sale_id INT PRIMARY KEY AUTO_INCREMENT,
     kendra_code VARCHAR(50),
+    inventory_id INT,
     medicine_id INT,
     batch_no VARCHAR(50) NOT NULL,
     quantity INT NOT NULL,
@@ -100,12 +101,14 @@ CREATE TABLE sales (
     customer_mobile VARCHAR(20),
     sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (inventory_id) REFERENCES inventory(inventory_id),
     FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
 );
 
 CREATE TABLE transfers (
     transfer_id INT PRIMARY KEY AUTO_INCREMENT,
     medicine_id INT,
+    batch_no VARCHAR(50),
     from_kendra_code VARCHAR(50),
     to_kendra_code VARCHAR(50),
     quantity INT,
@@ -115,3 +118,16 @@ CREATE TABLE transfers (
     FOREIGN KEY (to_kendra_code) REFERENCES kendras(kendra_code),
     FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
 );
+
+-- ALTER TABLE users ADD COLUMN district VARCHAR(100);
+-- 👉 Admin is NOT global
+-- 👉 Admin is city/state specific
+
+-- Example:
+
+-- Jaipur Admin → manages only Jaipur Kendras
+
+-- Delhi Admin → manages only Delhi Kendras
+
+-- ✔ Transfers → only within same city
+-- ✔ Monitoring → only own region
