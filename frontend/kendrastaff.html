@@ -411,40 +411,6 @@
             z-index: 10;
             background: #f8f9fa;
         }
-
-        .report-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .report-card {
-            background: white;
-            padding: 18px;
-            border-radius: 10px;
-            border-left: 4px solid #143a5c;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-            transition: 0.3s;
-        }
-
-        .report-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
-        }
-
-        .report-card h4 {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
-
-        .report-card p {
-            font-size: 22px;
-            font-weight: 600;
-            color: #143a5c;
-        }
     </style>
 </head>
 
@@ -464,7 +430,7 @@
             <span>Add Stock</span>
             <span>Sales Entry</span>
             <span>Inventory</span>
-            <span>Reports</span>
+            <span>Transfers</span>
             <span>Logout</span>
         </div>
     </div>
@@ -477,8 +443,6 @@
         </div>
 
         <div id="dashboard-view-content">
-
-            <!-- KPI CARDS -->
 
             <div class="cards">
 
@@ -557,8 +521,6 @@
 
             </div>
 
-            <!-- EXPIRY STATUS -->
-
             <div class="section">
                 <h2>Expiry Status Overview</h2>
                 <table>
@@ -593,8 +555,6 @@
                 </table>
             </div>
 
-            <!-- LOW STOCK + NOTIFICATIONS -->
-
             <div class="row">
 
                 <div class="section">
@@ -616,10 +576,7 @@
 
             </div>
 
-        </div> <!-- Close dashboard-view-content -->
-
-        <!-- ADD STOCK VIEW -->
-        <div id="add-stock-section" class="section" style="display:none; padding: 25px;">
+        </div> <div id="add-stock-section" class="section" style="display:none; padding: 25px;">
             <h2>Add New Stock Entry</h2>
             <form style="max-width: 650px; margin-top: 25px;">
                 <div class="form-group">
@@ -650,7 +607,6 @@
             </form>
         </div>
 
-        <!-- SALES ENTRY VIEW -->
         <div id="sales-section" class="section" style="display:none; padding: 25px;">
             <h2>Daily Sales Entry</h2>
             <form style="max-width: 650px; margin-top: 25px;">
@@ -684,7 +640,6 @@
             </form>
         </div>
 
-        <!-- INVENTORY VIEW -->
         <div id="inventory-section" class="section" style="display:none; padding: 25px;">
             <h2>Current Inventory Status</h2>
             <div class="search-bar">
@@ -756,53 +711,43 @@
             </div>
         </div>
 
-        <!-- REPORTS VIEW -->
-        <div id="reports-section" class="section" style="display:none; padding: 25px;">
-            <h2>Kendra Analytics & Reports</h2>
-
-            <div class="report-cards" style="margin-top: 20px;">
-                <div class="report-card">
-                    <h4>Monthly Sales</h4>
-                    <p>₹ 45,200</p>
-                </div>
-                <div class="report-card" style="border-left-color: #28a745;">
-                    <h4>Medicines Sold</h4>
-                    <p>1,240 Units</p>
-                </div>
-                <div class="report-card" style="border-left-color: #dc3545;">
-                    <h4>Expired Write-offs</h4>
-                    <p>₹ 1,150</p>
-                </div>
-                <div class="report-card" style="border-left-color: #fd7e14;">
-                    <h4>Urgent Reorders</h4>
-                    <p>8 Items</p>
-                </div>
+        <div id="transfers-section" style="display:none;">
+            <div class="section">
+                <h2 style="color: #28a745;">⬇️ Inbound Transfers (Receiving)</h2>
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Medicine</th><th>Qty</th><th>Source</th><th>Status</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#TR-102</td>
+                            <td>Metformin 500mg</td>
+                            <td>200</td>
+                            <td>Admin Store</td>
+                            <td style="color: #007bff; font-weight:600;">In Transit</td>
+                            <td><button class="btn" style="padding: 5px 12px; font-size: 11px;">Receive</button></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-
-            <div style="margin-top: 35px; border-top: 1px solid #eee; padding-top: 25px;">
-                <h3>Generate Report</h3>
-                <p style="font-size: 13px; color: #666; margin-top: 5px;">Select criteria to download PDF or export to
-                    Excel file.</p>
-
-                <div style="display: flex; gap: 15px; margin-top: 20px; align-items: center; flex-wrap: wrap;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <select style="width: 200px;">
-                            <option>Sales Report</option>
-                            <option>Inventory Report</option>
-                            <option>Expiry Report</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <select style="width: 200px;">
-                            <option>Last 7 Days</option>
-                            <option>This Month</option>
-                            <option>Last Month</option>
-                            <option>Custom Date Range</option>
-                        </select>
-                    </div>
-                    <button class="btn" style="background:#143a5c;">📥 Download PDF</button>
-                    <button class="btn" style="background:#28a745;">📊 Export to Excel</button>
-                </div>
+        
+            <div class="section">
+                <h2 style="color: #dc3545;">⬆️ Outbound Transfers (Sending)</h2>
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Medicine</th><th>Qty</th><th>Destination</th><th>Status</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>#TR-095</td>
+                            <td>Azithromycin 250mg</td>
+                            <td>50</td>
+                            <td>JA015 - Vashi Kendra</td>
+                            <td style="color: #fd7e14; font-weight:600;">Pending Pickup</td>
+                            <td><button class="btn" style="padding: 5px 12px; font-size: 11px; background: #28a745;">Ready for Dispatch</button></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -816,7 +761,7 @@
             "Add Stock": document.getElementById('add-stock-section'),
             "Sales Entry": document.getElementById('sales-section'),
             "Inventory": document.getElementById('inventory-section'),
-            "Reports": document.getElementById('reports-section')
+            "Transfers": document.getElementById('transfers-section')
         };
 
         function switchView(tabName) {
