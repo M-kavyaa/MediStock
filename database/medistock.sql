@@ -1,3 +1,4 @@
+drop database medistock;
 create database medistock;
 use medistock;
 create table kendras(
@@ -7,6 +8,7 @@ kendra_name varchar(255),
 state varchar(100),
 district varchar(100),
 pin varchar(20),
+-- pharmacist varchar(50),
 address text);
 INSERT INTO kendras (sno, kendra_code, kendra_name, state, district, pin, address) VALUES
 (1, 'JA001', 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', 'Karnataka', 'Bengaluru', '560001', 'MG Road, Bengaluru, Karnataka'),
@@ -48,3 +50,105 @@ INSERT INTO users (username, password, role, kendra_code) VALUES
 ('JA001', 'shop123', 'SHOPKEEPER', 'JA001'),
 ('JA002', 'shop123', 'SHOPKEEPER', 'JA002'),
 ('JA003', 'shop123', 'SHOPKEEPER', 'JA003');
+
+
+
+CREATE TABLE medicines (
+    medicine_id INT PRIMARY KEY AUTO_INCREMENT,
+    generic_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    composition TEXT,
+    group_name TEXT
+);
+
+INSERT INTO medicines (generic_name, price, composition, group_name) VALUES
+('Paracetamol 500mg', 15.00, 'Paracetamol', 'Analgesics'),
+('Azithromycin 250mg', 30.00, 'Azithromycin', 'Antibiotics'),
+('ORS Powder', 18.00, 'Oral Rehydration Salts', 'Electrolytes'),
+('Metformin 500mg', 22.00, 'Metformin', 'Anti-diabetic'),
+('Amoxicillin 500mg', 35.00, 'Amoxicillin', 'Antibiotics'),
+('Cetirizine 10mg', 10.00, 'Cetirizine', 'Antihistamines'),
+('Pantoprazole 40mg', 25.00, 'Pantoprazole', 'Antacids');
+
+CREATE TABLE inventory (
+    inventory_id INT PRIMARY KEY AUTO_INCREMENT,
+    kendra_code VARCHAR(50),
+    medicine_id INT,
+    batch_no VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL,
+    expiry_date DATE NOT NULL,
+    FOREIGN KEY (kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
+);
+
+-- Seed some inventory with standard, low stock, near expiry, and expired
+INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES
+-- Paracetamol (Mixed Cases demonstrating FEFO and Priority overrides)
+('JA001', 1, 'BCH-P001', 500, DATE_ADD(CURDATE(), INTERVAL 12 MONTH)), -- Safe
+('JA001', 1, 'BCH-P002', 200, DATE_ADD(CURDATE(), INTERVAL 60 DAY)), -- FEFO batch (First non-expired)
+('JA001', 1, 'BCH-P003', 100, DATE_SUB(CURDATE(), INTERVAL 5 DAY)), -- Expired
+('JA001', 1, 'BCH-P004', 10, DATE_ADD(CURDATE(), INTERVAL 6 MONTH)), -- Low Stock (Safe)
+
+-- Azithromycin
+('JA001', 2, 'BCH-A001', 25, DATE_ADD(CURDATE(), INTERVAL 20 DAY)), -- FEFO & Expiring Soon
+('JA001', 2, 'BCH-A002', 500, DATE_ADD(CURDATE(), INTERVAL 18 MONTH)), 
+('JA001', 2, 'BCH-A003', 5, DATE_ADD(CURDATE(), INTERVAL 20 MONTH)), -- Low Stock
+
+-- ORS Powder
+('JA001', 3, 'BCH-O001', 15, DATE_SUB(CURDATE(), INTERVAL 10 DAY)), -- Expired & Low Stock
+('JA001', 3, 'BCH-O002', 0, DATE_ADD(CURDATE(), INTERVAL 6 MONTH)), -- Stockout
+
+-- Metformin
+('JA001', 4, 'BCH-M001', 100, DATE_ADD(CURDATE(), INTERVAL 5 MONTH)), -- FEFO
+('JA001', 4, 'BCH-M002', 15, DATE_ADD(CURDATE(), INTERVAL 12 MONTH)), -- Low Stock
+
+-- Other Kendras
+('JA002', 2, 'BCH-A002', 500, DATE_ADD(CURDATE(), INTERVAL 18 MONTH)), -- Healthy stock of Azithromycin
+('JA003', 3, 'BCH-O002', 300, DATE_ADD(CURDATE(), INTERVAL 14 MONTH)); 
+
+CREATE TABLE sales (
+    sale_id INT PRIMARY KEY AUTO_INCREMENT,
+    kendra_code VARCHAR(50),
+    inventory_id INT,
+    medicine_id INT,
+    batch_no VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL,
+    total_amount DECIMAL(10,2),
+    customer_mobile VARCHAR(20),
+    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (inventory_id) REFERENCES inventory(inventory_id),
+    FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
+);
+
+CREATE TABLE transfers (
+    transfer_id INT PRIMARY KEY AUTO_INCREMENT,
+    medicine_id INT,
+    batch_no VARCHAR(50),
+    from_kendra_code VARCHAR(50),
+    to_kendra_code VARCHAR(50),
+    quantity INT,
+    status ENUM('Requested', 'Approved', 'In Transit', 'Completed') DEFAULT 'Requested',
+    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (from_kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (to_kendra_code) REFERENCES kendras(kendra_code),
+    FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
+);
+
+-- Seed Initial Transfers for Workflow Testing
+INSERT INTO transfers (medicine_id, batch_no, from_kendra_code, to_kendra_code, quantity, status) VALUES
+(1, 'BCH-P002', 'JA001', 'JA002', 50, 'Approved'), -- Pending Dispatch by JA001
+(2, 'BCH-A002', 'JA002', 'JA001', 30, 'In Transit'), -- Inbound to JA001. Awaiting receipt!
+(3, 'BCH-O002', 'JA003', 'JA001', 100, 'Completed'); -- Historic data
+-- ALTER TABLE users ADD COLUMN district VARCHAR(100);
+-- 👉 Admin is NOT global
+-- 👉 Admin is city/state specific
+
+-- Example:
+
+-- Jaipur Admin → manages only Jaipur Kendras
+
+-- Delhi Admin → manages only Delhi Kendras
+
+-- ✔ Transfers → only within same city
+-- ✔ Monitoring → only own region
