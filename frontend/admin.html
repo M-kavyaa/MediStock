@@ -652,49 +652,44 @@ Aakash
 </div>
 
 <div id="transfers-view" class="section" style="display:none;">
-<h2>Stock Redistribution History & Tracking</h2>
-<table>
-<thead>
-<tr>
-<th>Medicine</th>
-<th>From</th>
-<th>To</th>
-<th>Batch No</th>
-<th>Qty</th>
-<th>Date</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Paracetamol 500mg</td>
-<td>Kendra A</td>
-<td>Kendra B</td>
-<td>BCH234</td>
-<td>120</td>
-<td>15-02-2026</td>
-<td><span style="color: #28a745; font-weight: 600;">Completed</span></td>
-</tr>
-<tr>
-<td>Amoxicillin 250mg</td>
-<td>Kendra C</td>
-<td>Kendra D</td>
-<td>AMX908</td>
-<td>75</td>
-<td>17-02-2026</td>
-<td><span style="color: #fd7e14; font-weight: 600;">In Transit</span></td>
-</tr>
-<tr>
-<td>Cetirizine 10mg</td>
-<td>Kendra E</td>
-<td>Kendra F</td>
-<td>CTZ112</td>
-<td>200</td>
-<td>18-02-2026</td>
-<td><span style="color: #007bff; font-weight: 600;">Requested</span></td>
-</tr>
-</tbody>
-</table>
+    <h2 style="color: #28a745; margin-bottom: 20px;">💡 Smart Centralized Transfer Recommendations</h2>
+    <div class="scroll-table-container" style="margin-bottom: 35px; max-height: 280px; overflow-y: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Source (Send From)</th>
+                    <th>Destination (Send To)</th>
+                    <th>Batch & Logic</th>
+                    <th>Suggested Qty</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="recommendationsTableBody">
+                <tr><td colspan="6" style="text-align: center; padding: 15px;">Loading recommendations...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2 style="margin-top: 20px;">Stock Redistribution History & Tracking</h2>
+    <div class="scroll-table-container" style="max-height: 280px; overflow-y: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Batch No</th>
+                    <th>Qty</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="adminTransfersHistoryBody">
+                 <tr><td colspan="7" style="text-align: center; padding: 15px;">Loading history...</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div id="kendras-view" class="section" style="display:none;">
@@ -909,6 +904,86 @@ let text = row.innerText.toLowerCase();
 row.style.display = text.includes(filter) ? "" : "none";
 });
 });
+
+// Admin Transfer Features
+document.addEventListener('DOMContentLoaded', fetchAdminTransfers);
+
+async function fetchAdminTransfers() {
+    try {
+        const recRes = await fetch("http://localhost:5000/api/admin/transfer-recommendations");
+        const recommendations = await recRes.json();
+        
+        const recBody = document.getElementById("recommendationsTableBody");
+        if (recBody) {
+            recBody.innerHTML = "";
+            if (recommendations.length === 0) {
+                recBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 15px;">No transfer recommendations available. Inventory is balanced!</td></tr>`;
+            } else {
+                recommendations.forEach(r => {
+                    const tr = document.createElement("tr");
+                    tr.style.background = r.reason === 'Expiring Soon' ? '#fff8eb' : '#f9fbff';
+                    tr.innerHTML = `
+                       <td>${r.medicine_name}</td>
+                       <td><strong>${r.from_kendra_name}</strong><br><small>${r.from_kendra_code}</small></td>
+                       <td><strong>${r.to_kendra_name}</strong><br><small>${r.to_kendra_code}</small></td>
+                       <td>${r.batch_no} <br><span style="font-size: 11px; background: #eee; padding: 2px 6px; border-radius: 4px; color: ${r.reason === 'Expiring Soon' ? '#fd7e14' : '#007bff'};">${r.reason}</span></td>
+                       <td><strong style="font-size: 16px;">${r.quantity}</strong></td>
+                       <td><button onclick="approveTransfer(${r.medicine_id}, '${r.batch_no}', '${r.from_kendra_code}', '${r.to_kendra_code}', ${r.quantity})" style="background: #28a745; color: white; padding: 6px 14px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.3s;">Approve ➔</button></td>
+                    `;
+                    recBody.appendChild(tr);
+                });
+            }
+        }
+        
+        const histRes = await fetch("http://localhost:5000/api/transfers");
+        const history = await histRes.json();
+        const histBody = document.getElementById("adminTransfersHistoryBody");
+        if (histBody) {
+            histBody.innerHTML = "";
+            if (history.length === 0) {
+                histBody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 15px;">No transfers found in system.</td></tr>`;
+            }
+            history.forEach(t => {
+                const tr = document.createElement("tr");
+                const dateStr = new Date(t.transfer_date).toLocaleDateString('en-GB');
+                let statColor = '#143a5c'; // Default Requested/Approved
+                if (t.status === 'In Transit') statColor = '#fd7e14';
+                else if (t.status === 'Completed') statColor = '#28a745';
+                
+                tr.innerHTML = `
+                    <td>${t.medicine_name}</td>
+                    <td>${t.from_kendra_name}</td>
+                    <td>${t.to_kendra_name}</td>
+                    <td>${t.batch_no}</td>
+                    <td>${t.quantity}</td>
+                    <td>${dateStr}</td>
+                    <td><span style="color: ${statColor}; font-weight: 600;">${t.status}</span></td>
+                `;
+                histBody.appendChild(tr);
+            });
+        }
+    } catch (error) {
+        console.error("Error fetching transfer data", error);
+    }
+}
+
+async function approveTransfer(medicineId, batchNo, fromCode, toCode, qty) {
+    if (!confirm(`Are you sure you want to approve the transfer of ${qty} units?`)) return;
+    try {
+        const res = await fetch("http://localhost:5000/api/transfers/approve", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ medicine_id: medicineId, batch_no: batchNo, from_kendra_code: fromCode, to_kendra_code: toCode, quantity: qty })
+        });
+        if (res.ok) {
+            fetchAdminTransfers(); // Soft refresh UI
+        } else {
+            alert("Failed to approve transfer.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Server error processing transfer.");
+    }
+}
 
 </script>
 </body>

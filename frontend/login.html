@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MediStock - Login</title>
   <link rel="stylesheet" href="style1.css" />
 </head>
+
 <body>
 
   <div class="main-container">
@@ -16,7 +18,7 @@
 
       <div class="left-content">
         <h1>MediStock</h1>
-        <h3>Centralized Jan Aushadhi Inventory & Expiry Optimization System</h3>
+        <h2>Centralized Jan Aushadhi Inventory & Expiry Optimization System</h2>
         <p>
           FEFO-based Multi-Kendra Inventory Management with Transfer
           Recommendation and Demand Forecasting.
@@ -48,10 +50,9 @@
 
           <span class="icon-right">
             <!-- dropdown icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 9l-7 7-7-7" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </span>
         </div>
@@ -59,13 +60,13 @@
         <!-- ADMIN EMAIL INPUT -->
         <div class="form-group" id="adminField" style="display:none;">
           <!-- <input type="email" id="adminEmail" placeholder="Admin Email" /> -->
-          <input type="text" id="username" placeholder="Username" >
+          <input type="text" id="username" placeholder="Username">
 
 
           <span class="icon-right">
             <!-- user icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
               <circle cx="12" cy="7" r="4" stroke-width="2" />
@@ -79,23 +80,19 @@
 
           <span class="icon-right" id="toggleEye">
             <!-- eye icon -->
-            <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="_toggle_ M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
+            <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="_toggle_ M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7
                 -1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               <circle cx="12" cy="12" r="3" stroke-width="2" />
             </svg>
 
             <svg id="eyeClosed" style="display:none;" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
               fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M3 3l18 18" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M10.477 10.48A3 3 0 0112 9c1.657 0 3 1.343 3 3
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.477 10.48A3 3 0 0112 9c1.657 0 3 1.343 3 3
                 0 .517-.131 1.002-.362 1.425" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M6.228 6.228C4.344 7.52 3.04 9.56 2.458 12
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.228 6.228C4.344 7.52 3.04 9.56 2.458 12
                 3.732 16.057 7.523 19 12 19c1.88 0 3.64-.52 5.132-1.41" />
             </svg>
           </span>
@@ -161,62 +158,64 @@
       }
     });
   </script>
- <script>
-  async function loginUser(event) {
+  <script>
+    async function loginUser(event) {
       event.preventDefault();
-  
+
       const password = document.getElementById("password").value;
-  
+
       let role;
       let username = null;
       let kendra_code = null;
-  
+
       // Detect which tab is active
       if (adminBtn.classList.contains("active")) {
-          role = "ADMIN";
-          username = document.getElementById("username").value;
+        role = "ADMIN";
+        username = document.getElementById("username").value;
       } else {
-          role = "SHOPKEEPER";
-          kendra_code = document.getElementById("kendraSelect").value;
-          username = kendra_code; // or use separate shop username if needed
+        role = "SHOPKEEPER";
+        kendra_code = document.getElementById("kendraSelect").value;
+        username = kendra_code; // or use separate shop username if needed
       }
-  
+
       console.log("Role:", role);
       console.log("Username:", username);
-  
+
       try {
-          const response = await fetch("http://localhost:5000/api/login", {
-              method: "POST",
-              headers: {
-                  "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                  username,
-                  password,
-                  role,
-                  kendra_code
-              })
-          });
-  
-          const data = await response.json();
-          console.log("Server Response:", data);
-  
-          if (data.success) {
-              if (role === "ADMIN") {
-                  window.location.href = "admin.html";
-              } else {
-                  window.location.href = "kendrastaff.html";
-              }
+        const response = await fetch("http://localhost:5000/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username,
+            password,
+            role,
+            kendra_code
+          })
+        });
+
+        const data = await response.json();
+        console.log("Server Response:", data);
+
+        if (data.success) {
+          if (role === "ADMIN") {
+            window.location.href = "admin.html";
           } else {
-              alert("Invalid Credentials");
+            localStorage.setItem("kendra_code", kendra_code);
+            window.location.href = "kendrastaff.html";
           }
-  
+        } else {
+          alert("Invalid Credentials");
+        }
+
       } catch (error) {
-          console.error("Login Error:", error);
+        console.error("Login Error:", error);
       }
-  }
+    }
   </script>
-  
-  
+
+
 </body>
+
 </html>

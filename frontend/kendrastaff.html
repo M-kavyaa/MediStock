@@ -493,7 +493,7 @@
                 <div class="card orange">
                     <div class="card-content">
                         <h3>Low Stock Items</h3>
-                        <p>8</p>
+                        <p id="kpi-low-stock-count">0</p>
                         <small>Below Minimum Level</small>
                     </div>
                     <div class="card-icon">
@@ -559,7 +559,7 @@
 
                 <div class="section">
                     <h2>Low Stock Alerts</h2>
-                    <div class="low-stock-item"><strong>8 medicines</strong> below reorder level</div>
+                    <div class="low-stock-item"><strong id="alert-low-stock-count">0 batches</strong> below reorder level</div>
                     <div class="low-stock-item"><strong>2 items</strong> need urgent restock</div>
                     <div class="low-stock-item"><strong>3 batches</strong> expiring this week</div>
                 </div>
@@ -578,65 +578,63 @@
 
         </div> <div id="add-stock-section" class="section" style="display:none; padding: 25px;">
             <h2>Add New Stock Entry</h2>
-            <form style="max-width: 650px; margin-top: 25px;">
+            <form id="add-stock-form" style="max-width: 650px; margin-top: 25px;">
                 <div class="form-group">
-                    <label>Medicine Name</label>
-                    <input type="text" placeholder="Start typing to search...">
+                    <label>Select Medicine</label>
+                    <select id="add-medicine-select" required>
+                        <option value="">-- Loading medicines... --</option>
+                    </select>
                 </div>
                 <div class="row">
                     <div class="form-group">
                         <label>Batch Number</label>
-                        <input type="text" placeholder="e.g. BCH-XYZ">
+                        <input type="text" id="add-batch-no" placeholder="e.g. BCH-XYZ" required>
                     </div>
                     <div class="form-group">
                         <label>Quantity Add</label>
-                        <input type="number" placeholder="Enter quantity">
+                        <input type="number" id="add-quantity" placeholder="Enter quantity" min="1" required>
                     </div>
                 </div>
                 <div class="row">
                     <div class="form-group">
-                        <label>Manufacturing Date</label>
-                        <input type="date">
-                    </div>
-                    <div class="form-group">
                         <label>Expiry Date</label>
-                        <input type="date">
+                        <input type="date" id="add-expiry-date" required>
                     </div>
                 </div>
-                <button type="button" class="btn" style="margin-top: 15px;">Update Stock</button>
+                <button type="submit" class="btn" style="margin-top: 15px;">Update Stock</button>
             </form>
         </div>
 
         <div id="sales-section" class="section" style="display:none; padding: 25px;">
             <h2>Daily Sales Entry</h2>
-            <form style="max-width: 650px; margin-top: 25px;">
+            <form id="sales-entry-form" style="max-width: 650px; margin-top: 25px;">
                 <div class="form-group">
                     <label>Customer Mobile (Optional)</label>
-                    <input type="text" placeholder="10-digit mobile number">
+                    <input type="text" id="sale-customer-mobile" placeholder="10-digit mobile number">
                 </div>
                 <div class="form-group">
                     <label>Select Medicine</label>
-                    <select>
-                        <option value="">-- Choose from available stock --</option>
-                        <option>Paracetamol 500mg</option>
-                        <option>Azithromycin 250mg</option>
-                        <option>ORS Powder</option>
-                        <option>Metformin 500mg</option>
+                    <select id="sale-medicine-select" required>
+                        <option value="">-- Loading medicines... --</option>
                     </select>
+                </div>
+                <div class="row" style="margin-bottom: 20px;">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Assigned Batch (FEFO Algorithm)</label>
+                        <input type="text" id="fefo-batch-name-input" placeholder="Automatically Selected..." readonly style="background: #fff3cd; cursor: not-allowed; font-weight: bold; color: #856404; border: 1px solid #ffeeba;">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-left: 15px;">
+                        <label>Valid Stock (Qty)</label>
+                        <input type="text" id="fefo-avail-input" placeholder="0" readonly style="background: #e9ecef; cursor: not-allowed; font-weight: bold; text-align: center;">
+                    </div>
                 </div>
                 <div class="row">
                     <div class="form-group">
                         <label>Quantity Sold</label>
-                        <input type="number" placeholder="Units">
-                    </div>
-                    <div class="form-group">
-                        <label>Total Amount (₹)</label>
-                        <input type="number" placeholder="Amount collected" readonly value="0"
-                            style="background:#f4f6f9; cursor:not-allowed;">
+                        <input type="number" id="sale-quantity" placeholder="Units" min="1" required>
                     </div>
                 </div>
-                <button type="button" class="btn" style="margin-top: 15px; background: #28a745;">Generate Bill & Record
-                    Sale</button>
+                <button type="submit" class="btn" style="margin-top: 15px; background: #28a745;">Generate Bill & Record Sale</button>
             </form>
         </div>
 
@@ -658,54 +656,7 @@
                         </tr>
                     </thead>
                     <tbody id="inventoryTableBody">
-                        <tr>
-                            <td>Paracetamol 500mg</td>
-                            <td>M06-323</td>
-                            <td>300</td>
-                            <td>₹ 15</td>
-                            <td>22-11-2026</td>
-                            <td style="color:#dc3545; font-weight: 500;">Expired</td>
-                        </tr>
-                        <tr>
-                            <td>Azithromycin 250mg</td>
-                            <td>M06-091</td>
-                            <td>100</td>
-                            <td>₹ 30</td>
-                            <td>15-03-2026</td>
-                            <td style="color:#fd7e14; font-weight: 500;">Expiring Soon</td>
-                        </tr>
-                        <tr>
-                            <td>ORS Powder</td>
-                            <td>M09-956</td>
-                            <td>200</td>
-                            <td>₹ 18</td>
-                            <td>10-08-2026</td>
-                            <td style="color:#28a745; font-weight: 500;">Safe</td>
-                        </tr>
-                        <tr>
-                            <td>Metformin 500mg</td>
-                            <td>M11-204</td>
-                            <td>450</td>
-                            <td>₹ 22</td>
-                            <td>05-12-2027</td>
-                            <td style="color:#28a745; font-weight: 500;">Safe</td>
-                        </tr>
-                        <tr>
-                            <td>Amoxicillin 500mg</td>
-                            <td>M12-101</td>
-                            <td>15</td>
-                            <td>₹ 35</td>
-                            <td>01-08-2026</td>
-                            <td style="color:#fd7e14; font-weight: 500;">Low Stock</td>
-                        </tr>
-                        <tr>
-                            <td>Cetirizine 10mg</td>
-                            <td>M01-502</td>
-                            <td>850</td>
-                            <td>₹ 10</td>
-                            <td>10-10-2028</td>
-                            <td style="color:#28a745; font-weight: 500;">Safe</td>
-                        </tr>
+                        <!-- Rows populated dynamically by fetchInventory() -->
                     </tbody>
                 </table>
             </div>
@@ -716,17 +667,10 @@
                 <h2 style="color: #28a745;">⬇️ Inbound Transfers (Receiving)</h2>
                 <table>
                     <thead>
-                        <tr><th>ID</th><th>Medicine</th><th>Qty</th><th>Source</th><th>Status</th><th>Action</th></tr>
+                        <tr><th>ID</th><th>Medicine</th><th>Batch & Qty</th><th>Source Kendra</th><th>Status</th><th>Action</th></tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td>#TR-102</td>
-                            <td>Metformin 500mg</td>
-                            <td>200</td>
-                            <td>Admin Store</td>
-                            <td style="color: #007bff; font-weight:600;">In Transit</td>
-                            <td><button class="btn" style="padding: 5px 12px; font-size: 11px;">Receive</button></td>
-                        </tr>
+                    <tbody id="inbound-tbody">
+                        <tr><td colspan="6" style="text-align: center;">Loading inbound...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -735,17 +679,10 @@
                 <h2 style="color: #dc3545;">⬆️ Outbound Transfers (Sending)</h2>
                 <table>
                     <thead>
-                        <tr><th>ID</th><th>Medicine</th><th>Qty</th><th>Destination</th><th>Status</th><th>Action</th></tr>
+                        <tr><th>ID</th><th>Medicine</th><th>Batch & Qty</th><th>Destination Kendra</th><th>Status</th><th>Action</th></tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td>#TR-095</td>
-                            <td>Azithromycin 250mg</td>
-                            <td>50</td>
-                            <td>JA015 - Vashi Kendra</td>
-                            <td style="color: #fd7e14; font-weight:600;">Pending Pickup</td>
-                            <td><button class="btn" style="padding: 5px 12px; font-size: 11px; background: #28a745;">Ready for Dispatch</button></td>
-                        </tr>
+                    <tbody id="outbound-tbody">
+                         <tr><td colspan="6" style="text-align: center;">Loading outbound...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -797,6 +734,302 @@
                 let text = row.innerText.toLowerCase();
                 row.style.display = text.includes(filter) ? "" : "none";
             });
+        });
+
+        // Fetch Inventory on load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchInventory();
+        });
+
+        async function fetchInventory() {
+            const kendraCode = localStorage.getItem('kendra_code') || 'JA001'; // Default fallback
+            
+            // Optionally, update the generic badge
+            const roleBadge = document.querySelector('.role-badge');
+            if (roleBadge) {
+                roleBadge.innerText = `${kendraCode} - Kendra`;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/inventory/${kendraCode}`);
+                const data = await response.json();
+                window.currentKendraInventory = data;
+                
+                const tableBody = document.getElementById('inventoryTableBody');
+                tableBody.innerHTML = '';
+                
+                let fefoAssignedPerMedicine = {};
+                let lowStockCount = 0;
+                const LOW_STOCK_THRESHOLD = 20; // 20 units for testing logic 
+                
+                data.forEach((item, index) => {
+                    const expiryDate = new Date(item.expiry_date);
+                    const today = new Date();
+                    
+                    // Reset time portions for accurate day calc
+                    expiryDate.setHours(0,0,0,0);
+                    today.setHours(0,0,0,0);
+                    
+                    const diffTime = expiryDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    const isLowStock = item.quantity < LOW_STOCK_THRESHOLD;
+                    if (isLowStock) lowStockCount++;
+                    
+                    let statusText = 'Safe';
+                    let statusColor = '#28a745'; // Green
+                    
+                    if (diffDays < 0) {
+                        statusText = 'Expired';
+                        statusColor = '#dc3545'; // Red
+                    } else if (diffDays <= 30) {
+                        statusText = 'Expiring Soon';
+                        statusColor = '#fd7e14'; // Orange
+                    } else if (isLowStock) {
+                        statusText = 'Low Stock';
+                        statusColor = '#d63384'; // Pink font color for Low Stock
+                    }
+                    
+                    let isFefo = false;
+                    if (diffDays >= 0 && !fefoAssignedPerMedicine[item.medicine_name]) {
+                        isFefo = true;
+                        fefoAssignedPerMedicine[item.medicine_name] = true;
+                    }
+                    
+                    let rowBg = '';
+                    if (diffDays < 0) {
+                        rowBg = 'background: #fdf5f6;'; // subtle red line for expired
+                    } else if (diffDays <= 30) {
+                        rowBg = 'background: #fff8eb;'; // subtle orange tint
+                    } else if (isFefo) {
+                        rowBg = 'background: #fff3cd;'; // FEFO highlights must NOT be overridden by safe/low-stock logic
+                    } else if (isLowStock) {
+                        rowBg = 'background: #f8e1ec;'; // subtle pink tint specifically for simple safe low-stocks
+                    }
+                    
+                    // Format date safely
+                    const formattedDate = expiryDate.toLocaleDateString('en-GB').replace(/\//g, '-');
+                    
+                    const tr = document.createElement('tr');
+                    if (rowBg) tr.style = rowBg;
+                    
+                    tr.innerHTML = `
+                        <td>${item.medicine_name} ${isFefo ? '<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px; font-weight: bold; letter-spacing: 0.5px;">FEFO</span>' : ''}</td>
+                        <td>${item.batch_no}</td>
+                        <td>${item.quantity} ${isLowStock ? '<span title="Low Stock Warning!" style="font-size: 12px; margin-left: 4px;">⚠️</span>' : ''}</td>
+                        <td>₹ ${item.price}</td>
+                        <td>${formattedDate}</td>
+                        <td style="color: ${statusColor}; font-weight: 500;">${statusText}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+                
+                const kpiEl = document.getElementById('kpi-low-stock-count');
+                const alertEl = document.getElementById('alert-low-stock-count');
+                if (kpiEl) kpiEl.innerText = lowStockCount;
+                if (alertEl) alertEl.innerText = `${lowStockCount} batches`;
+                
+            } catch (error) {
+                console.error("Failed to fetch inventory data:", error);
+            }
+        } // <--- Added missing closing brace for fetchInventory
+
+        // Fetch Kendra specific transfers
+        async function fetchKendraTransfers() {
+            const kendraCode = localStorage.getItem("kendra_code");
+            if (!kendraCode) return;
+            try {
+                const res = await fetch(`http://localhost:5000/api/transfers/${kendraCode}`);
+                const data = await res.json();
+                
+                const inboundBody = document.getElementById('inbound-tbody');
+                if (inboundBody) {
+                     inboundBody.innerHTML = '';
+                     if (data.inbound.length === 0) {
+                         inboundBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No inbound deliveries detected.</td></tr>`;
+                     } else {
+                         data.inbound.forEach(t => {
+                             const tr = document.createElement('tr');
+                             let actBtn = '-';
+                             let sColor = '#007bff';
+                             if (t.status === 'In Transit') {
+                                 sColor = '#fd7e14';
+                                 actBtn = `<button onclick="updateTransferStatus(${t.transfer_id}, 'Completed')" class="btn" style="padding: 5px 12px; font-size: 11px; background: #007bff; color: white;">Receive & Add Stock</button>`;
+                             } else if (t.status === 'Completed') sColor = '#28a745';
+                             
+                             tr.innerHTML = `
+                                <td>#TR-${t.transfer_id}</td>
+                                <td>${t.medicine_name}</td>
+                                <td>${t.batch_no} <br><strong>${t.quantity} un.</strong></td>
+                                <td>${t.from_kendra_name}</td>
+                                <td style="color: ${sColor}; font-weight:600;">${t.status}</td>
+                                <td>${actBtn}</td>
+                             `;
+                             inboundBody.appendChild(tr);
+                         });
+                     }
+                }
+                
+                const outboundBody = document.getElementById('outbound-tbody');
+                if (outboundBody) {
+                     outboundBody.innerHTML = '';
+                     if (data.outbound.length === 0) {
+                         outboundBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No outbound deliveries assigned.</td></tr>`;
+                     } else {
+                         data.outbound.forEach(t => {
+                             const tr = document.createElement('tr');
+                             let actBtn = '-';
+                             let sColor = '#143a5c'; // default Approved
+                             if (t.status === 'Approved') {
+                                 actBtn = `<button onclick="updateTransferStatus(${t.transfer_id}, 'In Transit')" class="btn" style="padding: 5px 12px; font-size: 11px; background: #dc3545; color: white; border:none; cursor:pointer;">Dispatch Stock ➔</button>`;
+                             } else if (t.status === 'In Transit') sColor = '#fd7e14';
+                             else if (t.status === 'Completed') sColor = '#28a745';
+                             
+                             tr.innerHTML = `
+                                <td>#TR-${t.transfer_id}</td>
+                                <td>${t.medicine_name}</td>
+                                <td>${t.batch_no} <br><strong>${t.quantity} un.</strong></td>
+                                <td>${t.to_kendra_name}</td>
+                                <td style="color: ${sColor}; font-weight:600;">${t.status}</td>
+                                <td>${actBtn}</td>
+                             `;
+                             outboundBody.appendChild(tr);
+                         });
+                     }
+                }
+            } catch(e) {
+                console.error("Failed to load transfers:", e);
+            }
+        }
+
+        async function updateTransferStatus(id, newStatus) {
+            if(!confirm(`Update this transfer tracking to: ${newStatus}?`)) return;
+            try {
+                const res = await fetch(`http://localhost:5000/api/transfers/${id}/status`, {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (res.ok) {
+                    fetchKendraTransfers();
+                    if (newStatus === 'In Transit') alert("Dispatched successfully! Stock deducted.");
+                    if (newStatus === 'Completed') alert("Received safely! Stock added to inventory.");
+                    if(typeof fetchInventory === 'function') fetchInventory(); // Refresh live view
+                } else {
+                    alert("Sync Error");
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        
+        async function fetchMedicinesDropdown() {
+            try {
+                const res = await fetch("http://localhost:5000/api/medicines");
+                const medicinesList = await res.json();
+                
+                const addSelect = document.getElementById("add-medicine-select");
+                const saleSelect = document.getElementById("sale-medicine-select");
+                
+                if (addSelect && saleSelect) {
+                    let optionsHTML = '<option value="">-- Choose from available medicines --</option>';
+                    medicinesList.forEach(m => {
+                        optionsHTML += `<option value="${m.medicine_id}">${m.generic_name} (₹${m.price})</option>`;
+                    });
+                    addSelect.innerHTML = optionsHTML;
+                    saleSelect.innerHTML = optionsHTML;
+                }
+            } catch (e) { console.error("Error loading medicines:", e); }
+        }
+
+        document.getElementById("add-stock-form")?.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const payload = {
+                kendra_code: localStorage.getItem("kendra_code"),
+                medicine_id: document.getElementById("add-medicine-select").value,
+                batch_no: document.getElementById("add-batch-no").value,
+                quantity: document.getElementById("add-quantity").value,
+                expiry_date: document.getElementById("add-expiry-date").value
+            };
+            
+            try {
+                const res = await fetch("http://localhost:5000/api/inventory/add", {
+                    method: "POST", headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Stock Added Successfully!");
+                    this.reset();
+                    if(typeof fetchInventory === 'function') fetchInventory(); 
+                } else {
+                    alert(data.error || "Failed to add stock");
+                }
+            } catch(err) { console.error(err); }
+        });
+
+        document.getElementById("sale-medicine-select")?.addEventListener("change", function() {
+            const medId = this.value;
+            const batchInput = document.getElementById("fefo-batch-name-input");
+            const qtyInput = document.getElementById("fefo-avail-input");
+            if (!batchInput || !qtyInput) return;
+            
+            if (!medId || !window.currentKendraInventory) {
+                batchInput.value = "";
+                qtyInput.value = "";
+                return;
+            }
+            
+            const safeBatches = window.currentKendraInventory.filter(item => {
+                if (item.medicine_id != medId || item.quantity <= 0) return false;
+                const expDate = new Date(item.expiry_date);
+                expDate.setHours(0,0,0,0);
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                return expDate >= today;
+            });
+            
+            if (safeBatches.length > 0) {
+                safeBatches.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+                const fefoBatch = safeBatches[0];
+                batchInput.value = fefoBatch.batch_no;
+                qtyInput.value = fefoBatch.quantity + " units";
+            } else {
+                batchInput.value = "Out of valid stock!";
+                qtyInput.value = "0 units";
+            }
+        });
+
+        document.getElementById("sales-entry-form")?.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const payload = {
+                kendra_code: localStorage.getItem("kendra_code"),
+                medicine_id: document.getElementById("sale-medicine-select").value,
+                quantity_sold: document.getElementById("sale-quantity").value,
+                customer_mobile: document.getElementById("sale-customer-mobile").value
+            };
+            
+            try {
+                const res = await fetch("http://localhost:5000/api/sales/new", {
+                    method: "POST", headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Sale Completed! FEFO rules were successfully applied and inventory deduced.");
+                    this.reset();
+                    const batchInput = document.getElementById("fefo-batch-name-input");
+                    const qtyInput = document.getElementById("fefo-avail-input");
+                    if(batchInput) batchInput.value = "";
+                    if(qtyInput) qtyInput.value = "";
+                    if(typeof fetchInventory === 'function') fetchInventory(); 
+                } else {
+                    alert(data.error || "Transaction failed");
+                }
+            } catch(err) { console.error(err); }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => { 
+            setTimeout(fetchKendraTransfers, 300); 
+            fetchMedicinesDropdown();
         });
     </script>
 </body>
