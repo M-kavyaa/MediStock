@@ -1,3 +1,4 @@
+drop database medistock;
 create database medistock;
 use medistock;
 create table kendras(
@@ -82,11 +83,26 @@ CREATE TABLE inventory (
 
 -- Seed some inventory with standard, low stock, near expiry, and expired
 INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES
-('JA001', 1, 'BCH-P001', 500, DATE_ADD(CURDATE(), INTERVAL 12 MONTH)),
-('JA001', 2, 'BCH-A001', 20, DATE_ADD(CURDATE(), INTERVAL 20 DAY)), -- Expiring soon
-('JA001', 3, 'BCH-O001', 0, DATE_ADD(CURDATE(), INTERVAL 6 MONTH)), -- Stockout
-('JA001', 4, 'BCH-M001', 100, DATE_SUB(CURDATE(), INTERVAL 5 DAY)), -- Expired
+-- Paracetamol (Mixed Cases demonstrating FEFO and Priority overrides)
+('JA001', 1, 'BCH-P001', 500, DATE_ADD(CURDATE(), INTERVAL 12 MONTH)), -- Safe
+('JA001', 1, 'BCH-P002', 200, DATE_ADD(CURDATE(), INTERVAL 60 DAY)), -- FEFO batch (First non-expired)
+('JA001', 1, 'BCH-P003', 100, DATE_SUB(CURDATE(), INTERVAL 5 DAY)), -- Expired
+('JA001', 1, 'BCH-P004', 10, DATE_ADD(CURDATE(), INTERVAL 6 MONTH)), -- Low Stock (Safe)
 
+-- Azithromycin
+('JA001', 2, 'BCH-A001', 25, DATE_ADD(CURDATE(), INTERVAL 20 DAY)), -- FEFO & Expiring Soon
+('JA001', 2, 'BCH-A002', 500, DATE_ADD(CURDATE(), INTERVAL 18 MONTH)), 
+('JA001', 2, 'BCH-A003', 5, DATE_ADD(CURDATE(), INTERVAL 20 MONTH)), -- Low Stock
+
+-- ORS Powder
+('JA001', 3, 'BCH-O001', 15, DATE_SUB(CURDATE(), INTERVAL 10 DAY)), -- Expired & Low Stock
+('JA001', 3, 'BCH-O002', 0, DATE_ADD(CURDATE(), INTERVAL 6 MONTH)), -- Stockout
+
+-- Metformin
+('JA001', 4, 'BCH-M001', 100, DATE_ADD(CURDATE(), INTERVAL 5 MONTH)), -- FEFO
+('JA001', 4, 'BCH-M002', 15, DATE_ADD(CURDATE(), INTERVAL 12 MONTH)), -- Low Stock
+
+-- Other Kendras
 ('JA002', 2, 'BCH-A002', 500, DATE_ADD(CURDATE(), INTERVAL 18 MONTH)), -- Healthy stock of Azithromycin
 ('JA003', 3, 'BCH-O002', 300, DATE_ADD(CURDATE(), INTERVAL 14 MONTH)); 
 
@@ -119,6 +135,11 @@ CREATE TABLE transfers (
     FOREIGN KEY (medicine_id) REFERENCES medicines(medicine_id)
 );
 
+-- Seed Initial Transfers for Workflow Testing
+INSERT INTO transfers (medicine_id, batch_no, from_kendra_code, to_kendra_code, quantity, status) VALUES
+(1, 'BCH-P002', 'JA001', 'JA002', 50, 'Approved'), -- Pending Dispatch by JA001
+(2, 'BCH-A002', 'JA002', 'JA001', 30, 'In Transit'), -- Inbound to JA001. Awaiting receipt!
+(3, 'BCH-O002', 'JA003', 'JA001', 100, 'Completed'); -- Historic data
 -- ALTER TABLE users ADD COLUMN district VARCHAR(100);
 -- 👉 Admin is NOT global
 -- 👉 Admin is city/state specific
