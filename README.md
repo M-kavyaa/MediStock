@@ -178,39 +178,6 @@ MediStock
 
 ---
 
-## 🚀 Getting Started
-
-### Clone Repository
-
-```bash
-git clone <repository-url>
-```
-
-### Install Dependencies
-
-```bash
-npm install
-```
-
-### Configure Environment
-
-Create a `.env` file.
-
-```
-DB_HOST=localhost
-DB_USER=your_username
-DB_PASS=your_password
-DB_NAME=medistock
-PORT=5000
-```
-
-### Start Server
-
-```bash
-node server.js
-```
-
----
 
 ## 📸 Screenshots
 
@@ -247,7 +214,6 @@ node server.js
 ## 🚀 Future Enhancements
 
 - Rack–Shelf–Bin warehouse mapping
-- Barcode/QR code integration
 - AI-assisted demand forecasting
 - Dynamic reorder level calculation
 - Seasonal demand prediction
@@ -267,4 +233,4 @@ B.Tech Computer Science Engineering
 
 ## ⭐ Project Status
 
-This project is under active development as part of an academic Product-Based Learning (PBL) initiative. New features and optimizations are being added incrementally.
+This project is under active development. New features and optimizations are being added incrementally.
