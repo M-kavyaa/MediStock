@@ -98,22 +98,13 @@ Track Dispatch & Completion
 
 ## ⚙️ Tech Stack
 
-Frontend
-- HTML
-- CSS
-- JavaScript
+Frontend: HTML, CSS, JavaScript
 
-Backend
-- Node.js
-- Express.js
+Backend: Node.js, Express.js
 
-Database
-- MySQL
+Database: MySQL
 
-Tools
-- VS Code
-- Git
-- GitHub
+Tools: VS Code, Git, GitHub
 
 ---
 
@@ -178,7 +169,7 @@ MediStock
 
 ---
 
-
+```
 ## 📸 Screenshots
 
 ### Login
@@ -210,6 +201,7 @@ MediStock
 (Add screenshot)
 
 ---
+```
 
 ## 🚀 Future Enhancements
 
