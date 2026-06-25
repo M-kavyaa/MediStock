@@ -148,7 +148,7 @@ The generated recommendations are reviewed and approved by the administrator bef
 
 ## 📂 Project Structure
 
-<!--
+
 MediStock
 │
 ├── Backend
@@ -165,11 +165,11 @@ MediStock
 │   └── medistock.sql
 │
 └── README.md
-```
+
 
 ---
 
-```
+<!--
 ## 📸 Screenshots
 
 ### Login
@@ -188,7 +188,7 @@ MediStock
 
 (Add screenshot)
 
--->
+
 
 ### Inventory Module
 
@@ -201,7 +201,7 @@ MediStock
 (Add screenshot)
 
 ---
-```
+-->
 
 ## 🚀 Future Enhancements
 
