@@ -337,8 +337,11 @@ app.get("/api/medicines", (req, res) => {
 // API 10: Add New Stock / Upsert Batch
 app.post("/api/inventory/add", (req, res) => {
     const { kendra_code, medicine_id, batch_no, quantity, expiry_date } = req.body;
+    const kCode = kendra_code || "JA001";
+    const qty = parseInt(quantity, 10);
     
-    if (quantity <= 0) return res.status(400).json({ error: "Quantity must be greater than 0" });
+    if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "Quantity must be greater than 0" });
+    if (!medicine_id || !batch_no || !expiry_date) return res.status(400).json({ error: "All stock fields are required." });
     
     // Validate Expiry is in the future natively
     const selectedExpiry = new Date(expiry_date);
@@ -349,18 +352,18 @@ app.post("/api/inventory/add", (req, res) => {
     }
     
     const checkQuery = `SELECT * FROM inventory WHERE kendra_code=? AND medicine_id=? AND batch_no=?`;
-    db.query(checkQuery, [kendra_code, medicine_id, batch_no], (err, results) => {
+    db.query(checkQuery, [kCode, medicine_id, batch_no], (err, results) => {
         if (err) return res.status(500).json({ error: err });
         
         if (results.length > 0) {
             const updateQuery = `UPDATE inventory SET quantity = quantity + ? WHERE kendra_code=? AND medicine_id=? AND batch_no=?`;
-            db.query(updateQuery, [quantity, kendra_code, medicine_id, batch_no], (err) => {
+            db.query(updateQuery, [qty, kCode, medicine_id, batch_no], (err) => {
                 if (err) return res.status(500).json({ error: err });
                 res.json({ success: true, message: "Stock Added Successfully" });
             });
         } else {
             const insertQuery = `INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES (?, ?, ?, ?, ?)`;
-            db.query(insertQuery, [kendra_code, medicine_id, batch_no, quantity, expiry_date], (err) => {
+            db.query(insertQuery, [kCode, medicine_id, batch_no, qty, expiry_date], (err) => {
                 if (err) return res.status(500).json({ error: err });
                 res.json({ success: true, message: "Stock Added Successfully" });
             });
@@ -479,12 +482,12 @@ app.get("/api/admin/summary", async (req, res) => {
     const transfersMonth = await queryAsync("SELECT COUNT(*) as cnt FROM transfers WHERE MONTH(transfer_date) = MONTH(CURDATE()) AND YEAR(transfer_date) = YEAR(CURDATE())");
 
     res.json({
-      total_kendras: totalKendras[0].cnt,
-      total_medicines: totalMedicines[0].cnt,
-      expiring_soon: expiringSoon[0].cnt,
-      expired_stock: expiredStock[0].cnt,
-      low_stock_kendras: lowStockKendras[0].cnt,
-      transfers_this_month: transfersMonth[0].cnt
+      total_kendras: totalKendras.length > 0 ? totalKendras[0].cnt : 0,
+      total_medicines: totalMedicines.length > 0 ? totalMedicines[0].cnt : 0,
+      expiring_soon: expiringSoon.length > 0 ? expiringSoon[0].cnt : 0,
+      expired_stock: expiredStock.length > 0 ? expiredStock[0].cnt : 0,
+      low_stock_kendras: lowStockKendras.length > 0 ? lowStockKendras[0].cnt : 0,
+      transfers_this_month: transfersMonth.length > 0 ? transfersMonth[0].cnt : 0
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -540,9 +543,9 @@ app.get("/api/admin/reports", async (req, res) => {
     `);
 
     res.json({
-      estimated_wastage: wastageRes[0].estimated_wastage,
-      savings_redistribution: savingsRes[0].savings,
-      top_medicines: topMedsRes
+      estimated_wastage: wastageRes.length > 0 ? wastageRes[0].estimated_wastage : 0,
+      savings_redistribution: savingsRes.length > 0 ? savingsRes[0].savings : 0,
+      top_medicines: topMedsRes || []
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -551,7 +554,7 @@ app.get("/api/admin/reports", async (req, res) => {
 
 // API 15: Kendra Staff Summary Metrics & Today's Sales
 app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
-  const kendra_code = req.params.kendra_code;
+  const kendra_code = req.params.kendra_code || "JA001";
   try {
     const kNameRes = await queryAsync("SELECT kendra_name FROM kendras WHERE kendra_code = ?", [kendra_code]);
     const skusRes = await queryAsync("SELECT COUNT(DISTINCT medicine_id) as total_skus FROM inventory WHERE kendra_code = ?", [kendra_code]);
@@ -562,11 +565,11 @@ app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
 
     res.json({
       kendra_name: kNameRes.length > 0 ? kNameRes[0].kendra_name : kendra_code,
-      total_skus: skusRes[0].total_skus,
-      total_units: unitsRes[0].total_units,
-      expiring_soon: expiringRes[0].expiring_soon,
-      low_stock: lowStockRes[0].low_stock,
-      today_sales: salesRes[0].today_sales
+      total_skus: skusRes.length > 0 ? skusRes[0].total_skus : 0,
+      total_units: unitsRes.length > 0 ? unitsRes[0].total_units : 0,
+      expiring_soon: expiringRes.length > 0 ? expiringRes[0].expiring_soon : 0,
+      low_stock: lowStockRes.length > 0 ? lowStockRes[0].low_stock : 0,
+      today_sales: salesRes.length > 0 ? salesRes[0].today_sales : 0
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

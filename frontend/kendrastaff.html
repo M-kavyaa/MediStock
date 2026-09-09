@@ -885,8 +885,7 @@
 
         // Fetch Kendra specific transfers
         async function fetchKendraTransfers() {
-            const kendraCode = localStorage.getItem("kendra_code");
-            if (!kendraCode) return;
+            const kendraCode = localStorage.getItem("kendra_code") || "JA001";
             try {
                 const res = await fetch(`${API_BASE_URL}/api/transfers/${kendraCode}`);
                 const data = await res.json();
@@ -973,15 +972,13 @@
         async function fetchMedicinesDropdown() {
             try {
                 const res = await fetch(`${API_BASE_URL}/api/medicines`);
-                const medicinesList = await res.json();
-                
+                const meds = await res.json();
                 const addSelect = document.getElementById("add-medicine-select");
                 const saleSelect = document.getElementById("sale-medicine-select");
-                
-                if (addSelect && saleSelect) {
-                    let optionsHTML = '<option value="">-- Choose from available medicines --</option>';
-                    medicinesList.forEach(m => {
-                        optionsHTML += `<option value="${m.medicine_id}">${m.generic_name} (₹${m.price})</option>`;
+                if (addSelect && saleSelect && meds.length > 0) {
+                    let optionsHTML = '<option value="" disabled selected>-- Select Medicine --</option>';
+                    meds.forEach(m => {
+                        optionsHTML += `<option value="${m.medicine_id}">${m.generic_name} (₹ ${m.price})</option>`;
                     });
                     addSelect.innerHTML = optionsHTML;
                     saleSelect.innerHTML = optionsHTML;
@@ -991,8 +988,9 @@
 
         document.getElementById("add-stock-form")?.addEventListener("submit", async function(e) {
             e.preventDefault();
+            const kendraCode = localStorage.getItem("kendra_code") || "JA001";
             const payload = {
-                kendra_code: localStorage.getItem("kendra_code"),
+                kendra_code: kendraCode,
                 medicine_id: document.getElementById("add-medicine-select").value,
                 batch_no: document.getElementById("add-batch-no").value,
                 quantity: document.getElementById("add-quantity").value,
