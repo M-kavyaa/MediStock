@@ -1,7 +1,7 @@
 // MediStock Configurable API Base URL
 // Automatically detects localhost/file protocol vs production hosting
 
-const RENDER_BACKEND_URL = "https://medistock-backend.onrender.com"; // Replace with your actual Render URL after deploying backend
+const RENDER_BACKEND_URL = "https://medistock-8zrd.onrender.com";
 
 const API_BASE_URL = (
   window.location.protocol === 'file:' ||
