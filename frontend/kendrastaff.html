@@ -7,6 +7,7 @@
     <title>MediStock - Kendra Dashboard</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="config.js"></script>
 
     <style>
         * {
@@ -439,7 +440,7 @@
 
         <div class="page-header">
             <h1 id="main-title">Kendra Staff Dashboard</h1>
-            <div class="role-badge">KA001 - Jaipur Central</div>
+            <div class="role-badge" id="kendra-header-badge">Loading Kendra...</div>
         </div>
 
         <div id="dashboard-view-content">
@@ -449,7 +450,7 @@
                 <div class="card blue">
                     <div class="card-content">
                         <h3>Total Medicines</h3>
-                        <p>120</p>
+                        <p id="kpi-total-skus">0</p>
                         <small>Active SKUs</small>
                     </div>
                     <div class="card-icon">
@@ -463,7 +464,7 @@
                 <div class="card green">
                     <div class="card-content">
                         <h3>Total Stock Units</h3>
-                        <p>5,420</p>
+                        <p id="kpi-total-units">0</p>
                         <small>Available Quantity</small>
                     </div>
                     <div class="card-icon">
@@ -478,7 +479,7 @@
                 <div class="card red">
                     <div class="card-content">
                         <h3>Expiring Soon</h3>
-                        <p>15</p>
+                        <p id="kpi-expiring-soon">0</p>
                         <small>Within 30 Days</small>
                     </div>
                     <div class="card-icon">
@@ -507,7 +508,7 @@
                 <div class="card blue">
                     <div class="card-content">
                         <h3>Today's Sales</h3>
-                        <p>₹ 3,250</p>
+                        <p id="kpi-today-sales">₹ 0</p>
                         <small>Retail Collection</small>
                     </div>
                     <div class="card-icon">
@@ -524,53 +525,34 @@
             <div class="section">
                 <h2>Expiry Status Overview</h2>
                 <table>
-                    <tr>
-                        <th>Medicine</th>
-                        <th>Batch No</th>
-                        <th>Quantity</th>
-                        <th>Expiry Date</th>
-                        <th>Status</th>
-                    </tr>
-                    <tr>
-                        <td>Paracetamol</td>
-                        <td>M06-323</td>
-                        <td>300</td>
-                        <td>22-11-2026</td>
-                        <td style="color:red;">Expired</td>
-                    </tr>
-                    <tr>
-                        <td>Azithromycin</td>
-                        <td>M06-091</td>
-                        <td>100</td>
-                        <td>15-03-2026</td>
-                        <td style="color:orange;">Expiring Soon</td>
-                    </tr>
-                    <tr>
-                        <td>ORS Powder</td>
-                        <td>M09-956</td>
-                        <td>200</td>
-                        <td>10-08-2026</td>
-                        <td style="color:green;">Safe</td>
-                    </tr>
+                    <thead>
+                        <tr>
+                            <th>Medicine</th>
+                            <th>Batch No</th>
+                            <th>Quantity</th>
+                            <th>Expiry Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expiry-overview-tbody">
+                        <tr><td colspan="5" style="text-align:center;">Loading overview...</td></tr>
+                    </tbody>
                 </table>
             </div>
 
             <div class="row">
 
                 <div class="section">
-                    <h2>Low Stock Alerts</h2>
-                    <div class="low-stock-item"><strong id="alert-low-stock-count">0 batches</strong> below reorder level</div>
-                    <div class="low-stock-item"><strong>2 items</strong> need urgent restock</div>
-                    <div class="low-stock-item"><strong>3 batches</strong> expiring this week</div>
+                    <h2>Low Stock & Inventory Alerts</h2>
+                    <div id="kendra-low-stock-alerts-box">
+                        <div class="low-stock-item"><strong id="alert-low-stock-count">0 batches</strong> below reorder level</div>
+                    </div>
                 </div>
 
                 <div class="section">
                     <h2>Notification Centre</h2>
-                    <ul class="notification-list">
-                        <li><span>Transfer recommendation generated</span><span class="time">2 min ago</span></li>
-                        <li><span>Paracetamol batch expiring in 15 days</span><span class="time">15 min ago</span></li>
-                        <li><span>2 expired batches detected</span><span class="time">1 hour ago</span></li>
-                        <li><span>Monthly sales report available</span><span class="time">Today 9:15 AM</span></li>
+                    <ul class="notification-list" id="kendra-notifications-list">
+                        <li><span>Loading notifications...</span><span class="time">Just now</span></li>
                     </ul>
                 </div>
 
@@ -741,32 +723,62 @@
             fetchInventory();
         });
 
+        async function fetchKendraSummary() {
+            const kendraCode = localStorage.getItem('kendra_code') || 'JA001';
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/kendra/summary/${kendraCode}`);
+                const data = await res.json();
+                
+                const headerBadge = document.getElementById('kendra-header-badge');
+                if (headerBadge) headerBadge.innerText = `${kendraCode} - ${data.kendra_name}`;
+                
+                const skuEl = document.getElementById('kpi-total-skus');
+                if (skuEl) skuEl.innerText = data.total_skus;
+                
+                const unitsEl = document.getElementById('kpi-total-units');
+                if (unitsEl) unitsEl.innerText = data.total_units.toLocaleString();
+                
+                const expiringEl = document.getElementById('kpi-expiring-soon');
+                if (expiringEl) expiringEl.innerText = data.expiring_soon;
+                
+                const lowEl = document.getElementById('kpi-low-stock-count');
+                if (lowEl) lowEl.innerText = data.low_stock;
+                
+                const salesEl = document.getElementById('kpi-today-sales');
+                if (salesEl) salesEl.innerText = `₹ ${Number(data.today_sales).toLocaleString()}`;
+            } catch (err) {
+                console.error("Failed to fetch Kendra summary:", err);
+            }
+        }
+
         async function fetchInventory() {
             const kendraCode = localStorage.getItem('kendra_code') || 'JA001'; // Default fallback
+            fetchKendraSummary();
             
-            // Optionally, update the generic badge
-            const roleBadge = document.querySelector('.role-badge');
-            if (roleBadge) {
-                roleBadge.innerText = `${kendraCode} - Kendra`;
-            }
-
             try {
-                const response = await fetch(`http://localhost:5000/api/inventory/${kendraCode}`);
+                const response = await fetch(`${API_BASE_URL}/api/inventory/${kendraCode}`);
                 const data = await response.json();
                 window.currentKendraInventory = data;
                 
                 const tableBody = document.getElementById('inventoryTableBody');
-                tableBody.innerHTML = '';
+                const overviewBody = document.getElementById('expiry-overview-tbody');
+                const alertsBox = document.getElementById('kendra-low-stock-alerts-box');
+                const notifList = document.getElementById('kendra-notifications-list');
+                
+                if (tableBody) tableBody.innerHTML = '';
+                if (overviewBody) overviewBody.innerHTML = '';
+                if (alertsBox) alertsBox.innerHTML = '';
+                if (notifList) notifList.innerHTML = '';
                 
                 let fefoAssignedPerMedicine = {};
                 let lowStockCount = 0;
-                const LOW_STOCK_THRESHOLD = 20; // 20 units for testing logic 
+                let expiredCount = 0;
+                let expiringSoonCount = 0;
+                const LOW_STOCK_THRESHOLD = 20; 
                 
                 data.forEach((item, index) => {
                     const expiryDate = new Date(item.expiry_date);
                     const today = new Date();
-                    
-                    // Reset time portions for accurate day calc
                     expiryDate.setHours(0,0,0,0);
                     today.setHours(0,0,0,0);
                     
@@ -777,17 +789,19 @@
                     if (isLowStock) lowStockCount++;
                     
                     let statusText = 'Safe';
-                    let statusColor = '#28a745'; // Green
+                    let statusColor = '#28a745'; 
                     
                     if (diffDays < 0) {
                         statusText = 'Expired';
-                        statusColor = '#dc3545'; // Red
+                        statusColor = '#dc3545';
+                        expiredCount++;
                     } else if (diffDays <= 30) {
                         statusText = 'Expiring Soon';
-                        statusColor = '#fd7e14'; // Orange
+                        statusColor = '#fd7e14';
+                        expiringSoonCount++;
                     } else if (isLowStock) {
                         statusText = 'Low Stock';
-                        statusColor = '#d63384'; // Pink font color for Low Stock
+                        statusColor = '#d63384';
                     }
                     
                     let isFefo = false;
@@ -798,48 +812,83 @@
                     
                     let rowBg = '';
                     if (diffDays < 0) {
-                        rowBg = 'background: #fdf5f6;'; // subtle red line for expired
+                        rowBg = 'background: #fdf5f6;'; 
                     } else if (diffDays <= 30) {
-                        rowBg = 'background: #fff8eb;'; // subtle orange tint
+                        rowBg = 'background: #fff8eb;'; 
                     } else if (isFefo) {
-                        rowBg = 'background: #fff3cd;'; // FEFO highlights must NOT be overridden by safe/low-stock logic
+                        rowBg = 'background: #fff3cd;'; 
                     } else if (isLowStock) {
-                        rowBg = 'background: #f8e1ec;'; // subtle pink tint specifically for simple safe low-stocks
+                        rowBg = 'background: #f8e1ec;'; 
                     }
                     
-                    // Format date safely
                     const formattedDate = expiryDate.toLocaleDateString('en-GB').replace(/\//g, '-');
                     
-                    const tr = document.createElement('tr');
-                    if (rowBg) tr.style = rowBg;
-                    
-                    tr.innerHTML = `
-                        <td>${item.medicine_name} ${isFefo ? '<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px; font-weight: bold; letter-spacing: 0.5px;">FEFO</span>' : ''}</td>
-                        <td>${item.batch_no}</td>
-                        <td>${item.quantity} ${isLowStock ? '<span title="Low Stock Warning!" style="font-size: 12px; margin-left: 4px;">⚠️</span>' : ''}</td>
-                        <td>₹ ${item.price}</td>
-                        <td>${formattedDate}</td>
-                        <td style="color: ${statusColor}; font-weight: 500;">${statusText}</td>
-                    `;
-                    tableBody.appendChild(tr);
+                    // Populate Inventory Tab Table
+                    if (tableBody) {
+                        const tr = document.createElement('tr');
+                        if (rowBg) tr.style = rowBg;
+                        tr.innerHTML = `
+                            <td>${item.medicine_name} ${isFefo ? '<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px; font-weight: bold; letter-spacing: 0.5px;">FEFO</span>' : ''}</td>
+                            <td>${item.batch_no}</td>
+                            <td>${item.quantity} ${isLowStock ? '<span title="Low Stock Warning!" style="font-size: 12px; margin-left: 4px;">⚠️</span>' : ''}</td>
+                            <td>₹ ${item.price}</td>
+                            <td>${formattedDate}</td>
+                            <td style="color: ${statusColor}; font-weight: 500;">${statusText}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    }
+
+                    // Populate Expiry Overview Table on Dashboard
+                    if (overviewBody) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><strong>${item.medicine_name}</strong></td>
+                            <td>${item.batch_no}</td>
+                            <td>${item.quantity}</td>
+                            <td>${formattedDate}</td>
+                            <td style="color: ${statusColor}; font-weight: 600;">${statusText}</td>
+                        `;
+                        overviewBody.appendChild(tr);
+                    }
+
+                    // Populate Alerts if Low Stock or Expiring
+                    if (alertsBox && (isLowStock || diffDays <= 30)) {
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'low-stock-item';
+                        alertDiv.innerHTML = `<strong>${item.medicine_name}</strong> (${item.batch_no}): ${item.quantity} units - <span style="color: ${statusColor};">${statusText}</span>`;
+                        alertsBox.appendChild(alertDiv);
+                    }
                 });
-                
-                const kpiEl = document.getElementById('kpi-low-stock-count');
-                const alertEl = document.getElementById('alert-low-stock-count');
-                if (kpiEl) kpiEl.innerText = lowStockCount;
-                if (alertEl) alertEl.innerText = `${lowStockCount} batches`;
+
+                if (overviewBody && data.length === 0) {
+                    overviewBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No stock items registered for this Kendra.</td></tr>`;
+                }
+
+                // Dynamic Notifications
+                if (notifList) {
+                    if (expiredCount > 0) {
+                        notifList.innerHTML += `<li><span>🚨 <strong>${expiredCount} expired batch(es)</strong> detected in stock.</span><span class="time">Active Alert</span></li>`;
+                    }
+                    if (expiringSoonCount > 0) {
+                        notifList.innerHTML += `<li><span>⚠️ <strong>${expiringSoonCount} batch(es)</strong> expiring within 30 days.</span><span class="time">Active Alert</span></li>`;
+                    }
+                    if (lowStockCount > 0) {
+                        notifList.innerHTML += `<li><span>📉 <strong>${lowStockCount} batch(es)</strong> below minimum threshold.</span><span class="time">Active Alert</span></li>`;
+                    }
+                    notifList.innerHTML += `<li><span>✅ Kendra inventory synced with central database.</span><span class="time">Just now</span></li>`;
+                }
                 
             } catch (error) {
                 console.error("Failed to fetch inventory data:", error);
             }
-        } // <--- Added missing closing brace for fetchInventory
+        }
 
         // Fetch Kendra specific transfers
         async function fetchKendraTransfers() {
             const kendraCode = localStorage.getItem("kendra_code");
             if (!kendraCode) return;
             try {
-                const res = await fetch(`http://localhost:5000/api/transfers/${kendraCode}`);
+                const res = await fetch(`${API_BASE_URL}/api/transfers/${kendraCode}`);
                 const data = await res.json();
                 
                 const inboundBody = document.getElementById('inbound-tbody');
@@ -905,7 +954,7 @@
         async function updateTransferStatus(id, newStatus) {
             if(!confirm(`Update this transfer tracking to: ${newStatus}?`)) return;
             try {
-                const res = await fetch(`http://localhost:5000/api/transfers/${id}/status`, {
+                const res = await fetch(`${API_BASE_URL}/api/transfers/${id}/status`, {
                     method: 'PUT', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ status: newStatus })
                 });
@@ -923,7 +972,7 @@
         
         async function fetchMedicinesDropdown() {
             try {
-                const res = await fetch("http://localhost:5000/api/medicines");
+                const res = await fetch(`${API_BASE_URL}/api/medicines`);
                 const medicinesList = await res.json();
                 
                 const addSelect = document.getElementById("add-medicine-select");
@@ -951,7 +1000,7 @@
             };
             
             try {
-                const res = await fetch("http://localhost:5000/api/inventory/add", {
+                const res = await fetch(`${API_BASE_URL}/api/inventory/add`, {
                     method: "POST", headers: {"Content-Type": "application/json"},
                     body: JSON.stringify(payload)
                 });
@@ -1008,7 +1057,7 @@
             };
             
             try {
-                const res = await fetch("http://localhost:5000/api/sales/new", {
+                const res = await fetch(`${API_BASE_URL}/api/sales/new`, {
                     method: "POST", headers: {"Content-Type": "application/json"},
                     body: JSON.stringify(payload)
                 });

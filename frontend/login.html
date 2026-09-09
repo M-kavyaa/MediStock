@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MediStock - Login</title>
   <link rel="stylesheet" href="style1.css" />
+  <script src="config.js"></script>
 </head>
 
 <body>
@@ -43,9 +44,6 @@
         <div class="form-group" id="staffField">
           <select id="kendraSelect">
             <option value="" disabled selected>Select Kendra ID</option>
-            <option value="JA001">JA001 - Jaipur Central</option>
-            <option value="JA002">JA002 - Ajmer Road</option>
-            <option value="JA003">JA003 - Kota Main</option>
           </select>
 
           <span class="icon-right">
@@ -159,6 +157,24 @@
     });
   </script>
   <script>
+    async function loadKendras() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/kendras`);
+        const kendras = await response.json();
+        const selectEl = document.getElementById("kendraSelect");
+        if (selectEl && kendras.length > 0) {
+          selectEl.innerHTML = '<option value="" disabled selected>Select Kendra ID</option>';
+          kendras.forEach(k => {
+            selectEl.innerHTML += `<option value="${k.kendra_code}">${k.kendra_code} - ${k.kendra_name} (${k.district})</option>`;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load kendras for login:", err);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadKendras);
+
     async function loginUser(event) {
       event.preventDefault();
 
@@ -182,7 +198,7 @@
       console.log("Username:", username);
 
       try {
-        const response = await fetch("http://localhost:5000/api/login", {
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
