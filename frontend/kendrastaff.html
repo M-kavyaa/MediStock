@@ -1049,8 +1049,9 @@
 
         document.getElementById("sales-entry-form")?.addEventListener("submit", async function(e) {
             e.preventDefault();
+            const kendraCode = localStorage.getItem("kendra_code") || "JA001";
             const payload = {
-                kendra_code: localStorage.getItem("kendra_code"),
+                kendra_code: kendraCode,
                 medicine_id: document.getElementById("sale-medicine-select").value,
                 quantity_sold: document.getElementById("sale-quantity").value,
                 customer_mobile: document.getElementById("sale-customer-mobile").value
@@ -1070,6 +1071,7 @@
                     if(batchInput) batchInput.value = "";
                     if(qtyInput) qtyInput.value = "";
                     if(typeof fetchInventory === 'function') fetchInventory(); 
+                    if(typeof fetchKendraSummary === 'function') fetchKendraSummary();
                 } else {
                     alert(data.error || "Transaction failed");
                 }

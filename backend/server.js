@@ -254,52 +254,74 @@ app.put("/api/transfers/:id/status", (req, res) => {
    const { id } = req.params;
    const { status } = req.body; 
    
-   db.beginTransaction(err => {
-       if (err) return res.status(500).json({ error: err });
+   db.getConnection((err, conn) => {
+       if (err) return res.status(500).json({ error: "DB Connection Error" });
        
-       const updateStatus = `UPDATE transfers SET status = ? WHERE transfer_id = ?`;
-       db.query(updateStatus, [status, id], (err) => {
-           if (err) return db.rollback(() => res.status(500).json({ error: err }));
-           
-           if (status === 'In Transit') {
-               const deductStock = `
-                   UPDATE inventory i
-                   JOIN transfers t ON i.kendra_code = t.from_kendra_code AND i.batch_no = t.batch_no AND i.medicine_id = t.medicine_id
-                   SET i.quantity = i.quantity - t.quantity
-                   WHERE t.transfer_id = ?
-               `;
-               db.query(deductStock, [id], (err) => {
-                   if (err) return db.rollback(() => res.status(500).json({ error: err }));
-                   db.commit(() => res.json({ success: true }));
-               });
-           } else if (status === 'Completed') {
-               db.query(`SELECT * FROM transfers WHERE transfer_id = ?`, [id], (err, trResult) => {
-                   if (err) return db.rollback(() => res.status(500).json({ error: err }));
-                   const t = trResult[0];
-                   
-                   db.query(`SELECT * FROM inventory WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, [t.to_kendra_code, t.batch_no, t.medicine_id], (err, invRes) => {
-                       if (err) return db.rollback(() => res.status(500).json({ error: err }));
-                       if (invRes.length > 0) {
-                           db.query(`UPDATE inventory SET quantity = quantity + ? WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, [t.quantity, t.to_kendra_code, t.batch_no, t.medicine_id], (err) => {
-                              if (err) return db.rollback(() => res.status(500).json({ error: err }));
-                              db.commit(() => res.json({ success: true }));
-                           });
-                       } else {
-                           db.query(`SELECT expiry_date FROM inventory WHERE batch_no=? LIMIT 1`, [t.batch_no], (err, dtRes) => {
-                              if (err || dtRes.length === 0) return db.rollback(() => res.status(500).json({ error: "Batch ref not found" }));
-                              
-                              db.query(`INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES (?, ?, ?, ?, ?)`, 
-                              [t.to_kendra_code, t.medicine_id, t.batch_no, t.quantity, dtRes[0].expiry_date], (err) => {
-                                  if (err) return db.rollback(() => res.status(500).json({ error: err }));
-                                  db.commit(() => res.json({ success: true }));
-                              });
-                           });
-                       }
-                   });
-               });
-           } else {
-               db.commit(() => res.json({ success: true }));
+       conn.beginTransaction(err => {
+           if (err) {
+               conn.release();
+               return res.status(500).json({ error: err });
            }
+           
+           const rollback = (statusCode, message) => {
+               conn.rollback(() => {
+                   conn.release();
+                   res.status(statusCode).json({ error: message });
+               });
+           };
+
+           const commit = () => {
+               conn.commit(err => {
+                   if (err) return rollback(500, "Commit failed");
+                   conn.release();
+                   res.json({ success: true });
+               });
+           };
+
+           const updateStatus = `UPDATE transfers SET status = ? WHERE transfer_id = ?`;
+           conn.query(updateStatus, [status, id], (err) => {
+               if (err) return rollback(500, err);
+               
+               if (status === 'In Transit') {
+                   const deductStock = `
+                       UPDATE inventory i
+                       JOIN transfers t ON i.kendra_code = t.from_kendra_code AND i.batch_no = t.batch_no AND i.medicine_id = t.medicine_id
+                       SET i.quantity = i.quantity - t.quantity
+                       WHERE t.transfer_id = ?
+                   `;
+                   conn.query(deductStock, [id], (err) => {
+                       if (err) return rollback(500, err);
+                       commit();
+                   });
+               } else if (status === 'Completed') {
+                   conn.query(`SELECT * FROM transfers WHERE transfer_id = ?`, [id], (err, trResult) => {
+                       if (err || trResult.length === 0) return rollback(500, err || "Transfer reference not found");
+                       const t = trResult[0];
+                       
+                       conn.query(`SELECT * FROM inventory WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, [t.to_kendra_code, t.batch_no, t.medicine_id], (err, invRes) => {
+                           if (err) return rollback(500, err);
+                           if (invRes.length > 0) {
+                               conn.query(`UPDATE inventory SET quantity = quantity + ? WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, [t.quantity, t.to_kendra_code, t.batch_no, t.medicine_id], (err) => {
+                                  if (err) return rollback(500, err);
+                                  commit();
+                               });
+                           } else {
+                               conn.query(`SELECT expiry_date FROM inventory WHERE batch_no=? LIMIT 1`, [t.batch_no], (err, dtRes) => {
+                                  if (err || dtRes.length === 0) return rollback(500, "Batch ref not found");
+                                  
+                                  conn.query(`INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES (?, ?, ?, ?, ?)`, 
+                                  [t.to_kendra_code, t.medicine_id, t.batch_no, t.quantity, dtRes[0].expiry_date], (err) => {
+                                      if (err) return rollback(500, err);
+                                      commit();
+                                  });
+                               });
+                           }
+                       });
+                   });
+               } else {
+                   commit();
+               }
+           });
        });
    });
 });
@@ -350,84 +372,98 @@ app.post("/api/inventory/add", (req, res) => {
 app.post("/api/sales/new", (req, res) => {
     const { kendra_code, medicine_id, quantity_sold, customer_mobile } = req.body;
     let qtyNeeded = parseInt(quantity_sold, 10);
+    const kCode = kendra_code || "JA001";
     
-    if (qtyNeeded <= 0) return res.status(400).json({ error: "Quantity must be greater than 0" });
+    if (isNaN(qtyNeeded) || qtyNeeded <= 0) return res.status(400).json({ error: "Quantity must be greater than 0" });
     
-    db.beginTransaction(err => {
-        if (err) return res.status(500).json({ error: "Transaction start failed" });
+    db.getConnection((err, conn) => {
+        if (err) return res.status(500).json({ error: "DB Connection Error" });
         
-        // Exclusively fetch STRICT safe (non-expired) stock ordered by FEFO. Lock rows.
-        const getBatchesQuery = `
-            SELECT i.*, m.price FROM inventory i 
-            JOIN medicines m ON i.medicine_id = m.medicine_id
-            WHERE i.kendra_code = ? AND i.medicine_id = ? AND i.quantity > 0 AND i.expiry_date >= CURDATE()
-            ORDER BY i.expiry_date ASC
-            FOR UPDATE
-        `;
-        
-        db.query(getBatchesQuery, [kendra_code, medicine_id], (err, batches) => {
-            if (err) return db.rollback(() => res.status(500).json({ error: err }));
-            
-            let totalAvailable = batches.reduce((sum, b) => sum + b.quantity, 0);
-            
-            if (qtyNeeded > totalAvailable) {
-                return db.rollback(() => {
-                    res.status(400).json({ error: "Insufficient valid stock! Cannot sell more than available." });
-                });
+        conn.beginTransaction(err => {
+            if (err) {
+                conn.release();
+                return res.status(500).json({ error: "Transaction start failed" });
             }
             
-            let updates = [];
-            let salesEntries = [];
-            
-            for (let i = 0; i < batches.length; i++) {
-                if (qtyNeeded <= 0) break;
-                
-                let batch = batches[i];
-                let takeQty = Math.min(batch.quantity, qtyNeeded);
-                let partialAmount = takeQty * batch.price; // Dynamic price mapping per logged batch
-                
-                updates.push({ inventory_id: batch.inventory_id, newQty: batch.quantity - takeQty });
-                salesEntries.push([
-                    kendra_code, batch.inventory_id, medicine_id, batch.batch_no, takeQty, partialAmount, customer_mobile
-                ]);
-                
-                qtyNeeded -= takeQty;
-            }
-            
-            if (qtyNeeded > 0) {
-                 return db.rollback(() => res.status(400).json({ error: "Algorithm fault detecting split logic" }));
-            }
-            
-            // Execute batch cascade mutations via Promises to maintain clarity and synchronicity
-            let completedUpdates = 0;
-            let queryError = false;
-            
-            const finalizeTransaction = () => {
-                if (queryError) return; 
-                const insertSales = `INSERT INTO sales (kendra_code, inventory_id, medicine_id, batch_no, quantity, total_amount, customer_mobile) VALUES ?`;
-                db.query(insertSales, [salesEntries], (err) => {
-                    if (err) return db.rollback(() => res.status(500).json({ error: "Failed to generate accounting records" }));
-                    db.commit(err => {
-                        if (err) return db.rollback(() => res.status(500).json({ error: "Commit failed" }));
-                        res.json({ success: true, message: "Sale Completed" });
-                    });
+            const rollback = (statusCode, message) => {
+                conn.rollback(() => {
+                    conn.release();
+                    res.status(statusCode).json({ error: message });
                 });
             };
             
-            if (updates.length > 0) {
-                updates.forEach(u => {
-                    db.query(`UPDATE inventory SET quantity = ? WHERE inventory_id = ?`, [u.newQty, u.inventory_id], (err) => {
-                        if (err) {
-                            queryError = true;
-                            return db.rollback(() => res.status(500).json({ error: err }));
-                        }
-                        completedUpdates++;
-                        if (completedUpdates === updates.length) finalizeTransaction();
+            // Exclusively fetch STRICT safe (non-expired) stock ordered by FEFO. Lock rows.
+            const getBatchesQuery = `
+                SELECT i.*, m.price FROM inventory i 
+                JOIN medicines m ON i.medicine_id = m.medicine_id
+                WHERE i.kendra_code = ? AND i.medicine_id = ? AND i.quantity > 0 AND i.expiry_date >= CURDATE()
+                ORDER BY i.expiry_date ASC
+                FOR UPDATE
+            `;
+            
+            conn.query(getBatchesQuery, [kCode, medicine_id], (err, batches) => {
+                if (err) return rollback(500, err.message || err);
+                
+                let totalAvailable = (batches || []).reduce((sum, b) => sum + b.quantity, 0);
+                
+                if (qtyNeeded > totalAvailable) {
+                    return rollback(400, `Insufficient valid stock! Available: ${totalAvailable}, Requested: ${qtyNeeded}`);
+                }
+                
+                let updates = [];
+                let salesEntries = [];
+                const mobileNo = customer_mobile || '0000000000';
+                
+                for (let i = 0; i < batches.length; i++) {
+                    if (qtyNeeded <= 0) break;
+                    
+                    let batch = batches[i];
+                    let takeQty = Math.min(batch.quantity, qtyNeeded);
+                    let partialAmount = takeQty * batch.price; // Dynamic price mapping per logged batch
+                    
+                    updates.push({ inventory_id: batch.inventory_id, newQty: batch.quantity - takeQty });
+                    salesEntries.push([
+                        kCode, batch.inventory_id, medicine_id, batch.batch_no, takeQty, partialAmount, mobileNo
+                    ]);
+                    
+                    qtyNeeded -= takeQty;
+                }
+                
+                if (qtyNeeded > 0) {
+                     return rollback(400, "Algorithm fault detecting split logic");
+                }
+                
+                let completedUpdates = 0;
+                let queryError = false;
+                
+                const finalizeTransaction = () => {
+                    if (queryError) return; 
+                    const insertSales = `INSERT INTO sales (kendra_code, inventory_id, medicine_id, batch_no, quantity, total_amount, customer_mobile) VALUES ?`;
+                    conn.query(insertSales, [salesEntries], (err) => {
+                        if (err) return rollback(500, "Failed to generate accounting records");
+                        conn.commit(err => {
+                            if (err) return rollback(500, "Commit failed");
+                            conn.release();
+                            res.json({ success: true, message: "Sale Completed" });
+                        });
                     });
-                });
-            } else {
-                return db.rollback(() => res.status(400).json({ error: "No inventory updates structured" }));
-            }
+                };
+                
+                if (updates.length > 0) {
+                    updates.forEach(u => {
+                        conn.query(`UPDATE inventory SET quantity = ? WHERE inventory_id = ?`, [u.newQty, u.inventory_id], (err) => {
+                            if (err) {
+                                queryError = true;
+                                return rollback(500, err.message || err);
+                            }
+                            completedUpdates++;
+                            if (completedUpdates === updates.length) finalizeTransaction();
+                        });
+                    });
+                } else {
+                    return rollback(400, "No inventory updates structured");
+                }
+            });
         });
     });
 });
