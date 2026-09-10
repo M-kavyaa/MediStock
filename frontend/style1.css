@@ -259,15 +259,57 @@ body::after {
   .left-side {
     width: 100%;
     padding: 50px;
-    min-height: 280px;
+    min-height: 240px;
   }
 
   .right-side {
     width: 100%;
-    padding: 50px;
+    padding: 40px;
   }
 
   .left-content h1 {
-    font-size: 34px;
+    font-size: 32px;
+  }
+}
+
+@media(max-width: 480px) {
+  body {
+    padding: 10px;
+    height: auto;
+    min-height: 100vh;
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .main-container {
+    width: 100%;
+    margin: 10px 0;
+    border-radius: 16px;
+  }
+
+  .left-side {
+    padding: 25px 20px;
+  }
+
+  .left-content h1 {
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+
+  .left-content h2 {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+
+  .right-side {
+    padding: 25px 20px;
+  }
+
+  .right-side h2 {
+    font-size: 24px;
+  }
+
+  .role-tabs {
+    margin-bottom: 20px;
   }
 }

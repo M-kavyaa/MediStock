@@ -447,20 +447,17 @@ button:hover {
     100% { transform: scale(1); opacity: 0.8; }
 }
 
-/* ================= VIEW TRANSITION ================= */
-.section, .cards, .dashboard-grid {
-    animation: fadeUp 0.5s ease;
-}
-
-@keyframes fadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+@media (max-width: 768px) {
+    .navbar { padding: 12px 15px; flex-direction: column; gap: 10px; text-align: center; }
+    .container { flex-direction: column; }
+    .sidebar { width: 100% !important; min-width: 100% !important; border-right: none; border-bottom: 1px solid #e0e0e0; padding: 15px; }
+    .sidebar ul { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .sidebar ul li { width: auto; font-size: 12px; padding: 8px 12px; }
+    .main-content { padding: 15px !important; }
+    .cards { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+    .dashboard-grid { grid-template-columns: 1fr !important; }
+    .table-container, .section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; min-width: 600px; }
 }
 
 </style>
@@ -964,7 +961,7 @@ async function showKendraDetails(id, name) {
             <td>${item.batch_no}</td>
             <td>${item.quantity}</td>
             <td>${expDate.toLocaleDateString('en-GB')}</td>
-            <td>₹ ${item.price}</td>
+            <td>₹ ${item.price} <br><small style="color: #555;">📍 Rack ${item.rack || 'R-1'}, Shelf ${item.shelf || 'S-1'}, Bin ${item.bin || 'B-1'}</small></td>
             <td style="color: ${statusColor}; font-weight: 600;">${statusText}</td>
           `;
           body.appendChild(tr);

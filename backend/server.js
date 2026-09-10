@@ -88,7 +88,8 @@ app.post("/api/login", (req, res) => {
 app.get("/api/inventory/:kendra_code", (req, res) => {
   const kendra_code = req.params.kendra_code;
   const query = `
-    SELECT m.generic_name AS medicine_name, i.medicine_id, i.batch_no, i.quantity, i.expiry_date, m.price
+    SELECT m.generic_name AS medicine_name, i.medicine_id, i.batch_no, i.quantity, i.expiry_date, m.price,
+           COALESCE(i.rack, 'R-1') as rack, COALESCE(i.shelf, 'S-1') as shelf, COALESCE(i.bin, 'B-1') as bin
     FROM inventory i
     JOIN medicines m ON i.medicine_id = m.medicine_id
     WHERE i.kendra_code = ?
@@ -249,7 +250,7 @@ app.post("/api/transfers/approve", (req, res) => {
    });
 });
 
-// API 8: Kendra Advances Transfer Status (Dispatch/Receive)
+// API 8: Kendra Advances Transfer Status (Dispatch/Receive/Cancel)
 app.put("/api/transfers/:id/status", (req, res) => {
    const { id } = req.params;
    const { status } = req.body; 
@@ -278,48 +279,83 @@ app.put("/api/transfers/:id/status", (req, res) => {
                });
            };
 
-           const updateStatus = `UPDATE transfers SET status = ? WHERE transfer_id = ?`;
-           conn.query(updateStatus, [status, id], (err) => {
-               if (err) return rollback(500, err);
-               
+           conn.query(`SELECT * FROM transfers WHERE transfer_id = ? FOR UPDATE`, [id], (err, trResults) => {
+               if (err || trResults.length === 0) return rollback(404, "Transfer record not found.");
+               const transfer = trResults[0];
+
                if (status === 'In Transit') {
-                   const deductStock = `
-                       UPDATE inventory i
-                       JOIN transfers t ON i.kendra_code = t.from_kendra_code AND i.batch_no = t.batch_no AND i.medicine_id = t.medicine_id
-                       SET i.quantity = i.quantity - t.quantity
-                       WHERE t.transfer_id = ?
-                   `;
-                   conn.query(deductStock, [id], (err) => {
+                   if (transfer.status !== 'Approved') {
+                       return rollback(400, `Cannot dispatch. Transfer status is currently '${transfer.status}'. Only 'Approved' transfers can be dispatched.`);
+                   }
+
+                   const checkStockQuery = `SELECT quantity FROM inventory WHERE kendra_code = ? AND medicine_id = ? AND batch_no = ?`;
+                   conn.query(checkStockQuery, [transfer.from_kendra_code, transfer.medicine_id, transfer.batch_no], (err, invResults) => {
                        if (err) return rollback(500, err);
-                       commit();
-                   });
-               } else if (status === 'Completed') {
-                   conn.query(`SELECT * FROM transfers WHERE transfer_id = ?`, [id], (err, trResult) => {
-                       if (err || trResult.length === 0) return rollback(500, err || "Transfer reference not found");
-                       const t = trResult[0];
+                       const availQty = (invResults.length > 0) ? invResults[0].quantity : 0;
                        
-                       conn.query(`SELECT * FROM inventory WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, [t.to_kendra_code, t.batch_no, t.medicine_id], (err, invRes) => {
+                       if (availQty < transfer.quantity) {
+                           return rollback(400, `Cannot dispatch stock. Source Kendra stock is insufficient (Available: ${availQty}, Required: ${transfer.quantity}).`);
+                       }
+
+                       const deductStock = `UPDATE inventory SET quantity = quantity - ? WHERE kendra_code = ? AND medicine_id = ? AND batch_no = ?`;
+                       conn.query(deductStock, [transfer.quantity, transfer.from_kendra_code, transfer.medicine_id, transfer.batch_no], (err) => {
                            if (err) return rollback(500, err);
-                           if (invRes.length > 0) {
-                               conn.query(`UPDATE inventory SET quantity = quantity + ? WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, [t.quantity, t.to_kendra_code, t.batch_no, t.medicine_id], (err) => {
-                                  if (err) return rollback(500, err);
-                                  commit();
+                           
+                           conn.query(`UPDATE transfers SET status = 'In Transit' WHERE transfer_id = ?`, [id], (err) => {
+                               if (err) return rollback(500, err);
+                               commit();
+                           });
+                       });
+                   });
+
+               } else if (status === 'Completed') {
+                   if (transfer.status !== 'In Transit') {
+                       return rollback(400, `Cannot complete transfer. Transfer status is currently '${transfer.status}'. Only 'In Transit' transfers can be received.`);
+                   }
+
+                   conn.query(`SELECT * FROM inventory WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, 
+                       [transfer.to_kendra_code, transfer.batch_no, transfer.medicine_id], (err, invRes) => {
+                           if (err) return rollback(500, err);
+                           
+                           const finalizeComplete = () => {
+                               conn.query(`UPDATE transfers SET status = 'Completed' WHERE transfer_id = ?`, [id], (err) => {
+                                   if (err) return rollback(500, err);
+                                   commit();
                                });
-                           } else {
-                               conn.query(`SELECT expiry_date FROM inventory WHERE batch_no=? LIMIT 1`, [t.batch_no], (err, dtRes) => {
-                                  if (err || dtRes.length === 0) return rollback(500, "Batch ref not found");
-                                  
-                                  conn.query(`INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES (?, ?, ?, ?, ?)`, 
-                                  [t.to_kendra_code, t.medicine_id, t.batch_no, t.quantity, dtRes[0].expiry_date], (err) => {
+                           };
+
+                           if (invRes.length > 0) {
+                               conn.query(`UPDATE inventory SET quantity = quantity + ? WHERE kendra_code=? AND batch_no=? AND medicine_id=?`, 
+                                   [transfer.quantity, transfer.to_kendra_code, transfer.batch_no, transfer.medicine_id], (err) => {
                                       if (err) return rollback(500, err);
-                                      commit();
+                                      finalizeComplete();
+                                   });
+                           } else {
+                               conn.query(`SELECT expiry_date, rack, shelf, bin FROM inventory WHERE batch_no=? LIMIT 1`, [transfer.batch_no], (err, dtRes) => {
+                                  const expDate = (dtRes && dtRes.length > 0) ? dtRes[0].expiry_date : new Date();
+                                  const rVal = (dtRes && dtRes.length > 0) ? dtRes[0].rack : 'R-1';
+                                  const sVal = (dtRes && dtRes.length > 0) ? dtRes[0].shelf : 'S-1';
+                                  const bVal = (dtRes && dtRes.length > 0) ? dtRes[0].bin : 'B-1';
+                                  
+                                  conn.query(`INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date, rack, shelf, bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+                                  [transfer.to_kendra_code, transfer.medicine_id, transfer.batch_no, transfer.quantity, expDate, rVal, sVal, bVal], (err) => {
+                                      if (err) return rollback(500, err);
+                                      finalizeComplete();
                                   });
                                });
                            }
                        });
+
+               } else if (status === 'Cancelled' || status === 'Rejected') {
+                   if (transfer.status === 'In Transit' || transfer.status === 'Completed') {
+                       return rollback(400, `Cannot cancel transfer once it is ${transfer.status.toLowerCase()}.`);
+                   }
+                   conn.query(`UPDATE transfers SET status = 'Cancelled' WHERE transfer_id = ?`, [id], (err) => {
+                       if (err) return rollback(500, err);
+                       commit();
                    });
                } else {
-                   commit();
+                   return rollback(400, "Unsupported status transition.");
                }
            });
        });
@@ -336,14 +372,16 @@ app.get("/api/medicines", (req, res) => {
 
 // API 10: Add New Stock / Upsert Batch
 app.post("/api/inventory/add", (req, res) => {
-    const { kendra_code, medicine_id, batch_no, quantity, expiry_date } = req.body;
+    const { kendra_code, medicine_id, batch_no, quantity, expiry_date, rack, shelf, bin } = req.body;
     const kCode = kendra_code || "JA001";
     const qty = parseInt(quantity, 10);
+    const rVal = (rack && rack.trim()) ? rack.trim() : 'R-1';
+    const sVal = (shelf && shelf.trim()) ? shelf.trim() : 'S-1';
+    const bVal = (bin && bin.trim()) ? bin.trim() : 'B-1';
     
     if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "Quantity must be greater than 0" });
     if (!medicine_id || !batch_no || !expiry_date) return res.status(400).json({ error: "All stock fields are required." });
     
-    // Validate Expiry is in the future natively
     const selectedExpiry = new Date(expiry_date);
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -356,14 +394,14 @@ app.post("/api/inventory/add", (req, res) => {
         if (err) return res.status(500).json({ error: err });
         
         if (results.length > 0) {
-            const updateQuery = `UPDATE inventory SET quantity = quantity + ? WHERE kendra_code=? AND medicine_id=? AND batch_no=?`;
-            db.query(updateQuery, [qty, kCode, medicine_id, batch_no], (err) => {
+            const updateQuery = `UPDATE inventory SET quantity = quantity + ?, rack = ?, shelf = ?, bin = ? WHERE kendra_code=? AND medicine_id=? AND batch_no=?`;
+            db.query(updateQuery, [qty, rVal, sVal, bVal, kCode, medicine_id, batch_no], (err) => {
                 if (err) return res.status(500).json({ error: err });
                 res.json({ success: true, message: "Stock Added Successfully" });
             });
         } else {
-            const insertQuery = `INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date) VALUES (?, ?, ?, ?, ?)`;
-            db.query(insertQuery, [kCode, medicine_id, batch_no, qty, expiry_date], (err) => {
+            const insertQuery = `INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date, rack, shelf, bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+            db.query(insertQuery, [kCode, medicine_id, batch_no, qty, expiry_date, rVal, sVal, bVal], (err) => {
                 if (err) return res.status(500).json({ error: err });
                 res.json({ success: true, message: "Stock Added Successfully" });
             });
@@ -395,9 +433,9 @@ app.post("/api/sales/new", (req, res) => {
                 });
             };
             
-            // Exclusively fetch STRICT safe (non-expired) stock ordered by FEFO. Lock rows.
             const getBatchesQuery = `
-                SELECT i.*, m.price FROM inventory i 
+                SELECT i.*, m.price, COALESCE(i.rack, 'R-1') as rack, COALESCE(i.shelf, 'S-1') as shelf, COALESCE(i.bin, 'B-1') as bin 
+                FROM inventory i 
                 JOIN medicines m ON i.medicine_id = m.medicine_id
                 WHERE i.kendra_code = ? AND i.medicine_id = ? AND i.quantity > 0 AND i.expiry_date >= CURDATE()
                 ORDER BY i.expiry_date ASC
@@ -415,6 +453,7 @@ app.post("/api/sales/new", (req, res) => {
                 
                 let updates = [];
                 let salesEntries = [];
+                let batchesUsed = [];
                 const mobileNo = customer_mobile || '0000000000';
                 
                 for (let i = 0; i < batches.length; i++) {
@@ -422,12 +461,21 @@ app.post("/api/sales/new", (req, res) => {
                     
                     let batch = batches[i];
                     let takeQty = Math.min(batch.quantity, qtyNeeded);
-                    let partialAmount = takeQty * batch.price; // Dynamic price mapping per logged batch
+                    let partialAmount = takeQty * batch.price;
                     
                     updates.push({ inventory_id: batch.inventory_id, newQty: batch.quantity - takeQty });
                     salesEntries.push([
                         kCode, batch.inventory_id, medicine_id, batch.batch_no, takeQty, partialAmount, mobileNo
                     ]);
+                    batchesUsed.push({
+                        batch_no: batch.batch_no,
+                        quantity: takeQty,
+                        rack: batch.rack,
+                        shelf: batch.shelf,
+                        bin: batch.bin,
+                        expiry_date: batch.expiry_date,
+                        price: batch.price
+                    });
                     
                     qtyNeeded -= takeQty;
                 }
@@ -447,7 +495,7 @@ app.post("/api/sales/new", (req, res) => {
                         conn.commit(err => {
                             if (err) return rollback(500, "Commit failed");
                             conn.release();
-                            res.json({ success: true, message: "Sale Completed" });
+                            res.json({ success: true, message: "Sale Completed", batches_used: batchesUsed });
                         });
                     });
                 };

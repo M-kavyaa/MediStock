@@ -406,11 +406,18 @@
             background: #143a5c;
         }
 
-        .table-container table th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background: #f8f9fa;
+        @media (max-width: 768px) {
+            .navbar { padding: 12px 15px; flex-direction: column; gap: 10px; text-align: center; }
+            .container { flex-direction: column; }
+            .sidebar { width: 100% !important; min-width: 100% !important; border-right: none; border-bottom: 1px solid #e0e0e0; padding: 15px; }
+            .sidebar ul { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+            .sidebar ul li { width: auto; font-size: 12px; padding: 8px 12px; }
+            .main-content { padding: 15px !important; }
+            .row { flex-direction: column !important; gap: 10px !important; }
+            .row .form-group { margin-left: 0 !important; width: 100% !important; }
+            .cards { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+            .table-container, .section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { width: 100%; min-width: 550px; }
         }
     </style>
 </head>
@@ -558,7 +565,7 @@
 
             </div>
 
-        </div> <div id="add-stock-section" class="section" style="display:none; padding: 25px;">
+        <div id="add-stock-section" class="section" style="display:none; padding: 25px;">
             <h2>Add New Stock Entry</h2>
             <form id="add-stock-form" style="max-width: 650px; margin-top: 25px;">
                 <div class="form-group">
@@ -581,6 +588,14 @@
                     <div class="form-group">
                         <label>Expiry Date</label>
                         <input type="date" id="add-expiry-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Storage Location (Rack / Shelf / Bin)</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="add-rack" placeholder="Rack (R-1)" style="flex:1;">
+                            <input type="text" id="add-shelf" placeholder="Shelf (S-1)" style="flex:1;">
+                            <input type="text" id="add-bin" placeholder="Bin (B-1)" style="flex:1;">
+                        </div>
                     </div>
                 </div>
                 <button type="submit" class="btn" style="margin-top: 15px;">Update Stock</button>
@@ -609,6 +624,10 @@
                         <label>Valid Stock (Qty)</label>
                         <input type="text" id="fefo-avail-input" placeholder="0" readonly style="background: #e9ecef; cursor: not-allowed; font-weight: bold; text-align: center;">
                     </div>
+                    <div class="form-group" style="flex: 2; margin-left: 15px;">
+                        <label>Physical Storage Location</label>
+                        <input type="text" id="fefo-location-input" placeholder="Rack / Shelf / Bin" readonly style="background: #e8f4f8; cursor: not-allowed; font-weight: bold; color: #143a5c; border: 1px solid #bce1ec;">
+                    </div>
                 </div>
                 <div class="row">
                     <div class="form-group">
@@ -634,6 +653,7 @@
                             <th>In Stock</th>
                             <th>Unit Price</th>
                             <th>Expiry Date</th>
+                            <th>Storage Location</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -833,6 +853,7 @@
                             <td>${item.quantity} ${isLowStock ? '<span title="Low Stock Warning!" style="font-size: 12px; margin-left: 4px;">⚠️</span>' : ''}</td>
                             <td>₹ ${item.price}</td>
                             <td>${formattedDate}</td>
+                            <td><span style="background: #eef3f8; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; color: #143a5c;">Rack: ${item.rack || 'R-1'}, Shelf: ${item.shelf || 'S-1'}, Bin: ${item.bin || 'B-1'}</span></td>
                             <td style="color: ${statusColor}; font-weight: 500;">${statusText}</td>
                         `;
                         tableBody.appendChild(tr);
@@ -957,15 +978,16 @@
                     method: 'PUT', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ status: newStatus })
                 });
+                const data = await res.json();
                 if (res.ok) {
                     fetchKendraTransfers();
-                    if (newStatus === 'In Transit') alert("Dispatched successfully! Stock deducted.");
-                    if (newStatus === 'Completed') alert("Received safely! Stock added to inventory.");
-                    if(typeof fetchInventory === 'function') fetchInventory(); // Refresh live view
+                    if (newStatus === 'In Transit') alert("Dispatched successfully! Source stock deducted.");
+                    if (newStatus === 'Completed') alert("Received safely! Destination stock added.");
+                    if(typeof fetchInventory === 'function') fetchInventory();
                 } else {
-                    alert("Sync Error");
+                    alert(data.error || "Sync Error");
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error(e); alert("Server communication error"); }
         }
 
         
@@ -994,7 +1016,10 @@
                 medicine_id: document.getElementById("add-medicine-select").value,
                 batch_no: document.getElementById("add-batch-no").value,
                 quantity: document.getElementById("add-quantity").value,
-                expiry_date: document.getElementById("add-expiry-date").value
+                expiry_date: document.getElementById("add-expiry-date").value,
+                rack: document.getElementById("add-rack")?.value || "R-1",
+                shelf: document.getElementById("add-shelf")?.value || "S-1",
+                bin: document.getElementById("add-bin")?.value || "B-1"
             };
             
             try {
@@ -1017,11 +1042,13 @@
             const medId = this.value;
             const batchInput = document.getElementById("fefo-batch-name-input");
             const qtyInput = document.getElementById("fefo-avail-input");
+            const locInput = document.getElementById("fefo-location-input");
             if (!batchInput || !qtyInput) return;
             
             if (!medId || !window.currentKendraInventory) {
                 batchInput.value = "";
                 qtyInput.value = "";
+                if(locInput) locInput.value = "";
                 return;
             }
             
@@ -1039,9 +1066,13 @@
                 const fefoBatch = safeBatches[0];
                 batchInput.value = fefoBatch.batch_no;
                 qtyInput.value = fefoBatch.quantity + " units";
+                if (locInput) {
+                    locInput.value = `Rack: ${fefoBatch.rack || 'R-1'} | Shelf: ${fefoBatch.shelf || 'S-1'} | Bin: ${fefoBatch.bin || 'B-1'}`;
+                }
             } else {
                 batchInput.value = "Out of valid stock!";
                 qtyInput.value = "0 units";
+                if (locInput) locInput.value = "N/A";
             }
         });
 
@@ -1062,12 +1093,20 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert("Sale Completed! FEFO rules were successfully applied and inventory deduced.");
+                    let locSummary = "";
+                    if (data.batches_used && data.batches_used.length > 0) {
+                        locSummary = "\n\n📦 PHYSICALLY STORED AT:\n" + data.batches_used.map(b => 
+                            `• Batch ${b.batch_no} (${b.quantity} units) ➔ Rack: ${b.rack || 'R-1'}, Shelf: ${b.shelf || 'S-1'}, Bin: ${b.bin || 'B-1'}`
+                        ).join("\n");
+                    }
+                    alert("Sale Completed! FEFO rules were successfully applied and inventory deduced." + locSummary);
                     this.reset();
                     const batchInput = document.getElementById("fefo-batch-name-input");
                     const qtyInput = document.getElementById("fefo-avail-input");
+                    const locInput = document.getElementById("fefo-location-input");
                     if(batchInput) batchInput.value = "";
                     if(qtyInput) qtyInput.value = "";
+                    if(locInput) locInput.value = "";
                     if(typeof fetchInventory === 'function') fetchInventory(); 
                     if(typeof fetchKendraSummary === 'function') fetchKendraSummary();
                 } else {
