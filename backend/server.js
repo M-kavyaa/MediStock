@@ -1,7 +1,8 @@
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const app = express();
 app.use(cors());
@@ -24,13 +25,22 @@ if (process.env.DB_SSL === "true") {
 
 const db = mysql.createPool(dbConfig);
 
-// Verify DB connection
+// Verify DB connection and ensure location columns exist
 db.getConnection((err, connection) => {
   if (err) {
     console.log("Database connection failed ❌:", err.message);
   } else {
     console.log("MySQL Database Connected Successfully ✅");
-    connection.release();
+    connection.query("ALTER TABLE inventory ADD COLUMN rack VARCHAR(20) DEFAULT 'R-1', ADD COLUMN shelf VARCHAR(20) DEFAULT 'S-1', ADD COLUMN bin VARCHAR(20) DEFAULT 'B-1'", (alterErr) => {
+      if (alterErr) {
+        connection.query("ALTER TABLE inventory ADD COLUMN rack VARCHAR(20) DEFAULT 'R-1'", () => {});
+        connection.query("ALTER TABLE inventory ADD COLUMN shelf VARCHAR(20) DEFAULT 'S-1'", () => {});
+        connection.query("ALTER TABLE inventory ADD COLUMN bin VARCHAR(20) DEFAULT 'B-1'", () => {});
+      } else {
+        console.log("Database schema auto-migrated with rack/shelf/bin columns ✅");
+      }
+      connection.release();
+    });
   }
 });
 
@@ -57,8 +67,8 @@ app.get("/api/kendras", (req, res) => {
 app.post("/api/login", (req, res) => {
   const { username, password, role, kendra_code } = req.body;
 
-  let query = "SELECT * FROM users WHERE username=? AND password=? AND role=?";
-  let params = [username, password, role];
+  let query = "SELECT * FROM users WHERE username=? AND password=?";
+  let params = [username, password];
 
   if (role === "SHOPKEEPER") {
     query += " AND kendra_code=?";
@@ -96,8 +106,22 @@ app.get("/api/inventory/:kendra_code", (req, res) => {
     ORDER BY i.expiry_date ASC
   `;
   db.query(query, [kendra_code], (err, results) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(results);
+    if (err) {
+      const fallbackQuery = `
+        SELECT m.generic_name AS medicine_name, i.medicine_id, i.batch_no, i.quantity, i.expiry_date, m.price,
+               'R-1' as rack, 'S-1' as shelf, 'B-1' as bin
+        FROM inventory i
+        JOIN medicines m ON i.medicine_id = m.medicine_id
+        WHERE i.kendra_code = ?
+        ORDER BY i.expiry_date ASC
+      `;
+      db.query(fallbackQuery, [kendra_code], (fbErr, fbResults) => {
+        if (fbErr) return res.status(500).json({ error: fbErr });
+        res.json(fbResults);
+      });
+    } else {
+      res.json(results);
+    }
   });
 });
 
@@ -443,76 +467,88 @@ app.post("/api/sales/new", (req, res) => {
             `;
             
             conn.query(getBatchesQuery, [kCode, medicine_id], (err, batches) => {
-                if (err) return rollback(500, err.message || err);
-                
-                let totalAvailable = (batches || []).reduce((sum, b) => sum + b.quantity, 0);
-                
-                if (qtyNeeded > totalAvailable) {
-                    return rollback(400, `Insufficient valid stock! Available: ${totalAvailable}, Requested: ${qtyNeeded}`);
-                }
-                
-                let updates = [];
-                let salesEntries = [];
-                let batchesUsed = [];
-                const mobileNo = customer_mobile || '0000000000';
-                
-                for (let i = 0; i < batches.length; i++) {
-                    if (qtyNeeded <= 0) break;
+                const processBatches = (batchList) => {
+                    let totalAvailable = (batchList || []).reduce((sum, b) => sum + b.quantity, 0);
                     
-                    let batch = batches[i];
-                    let takeQty = Math.min(batch.quantity, qtyNeeded);
-                    let partialAmount = takeQty * batch.price;
+                    if (qtyNeeded > totalAvailable) {
+                        return rollback(400, `Insufficient valid stock! Available: ${totalAvailable}, Requested: ${qtyNeeded}`);
+                    }
                     
-                    updates.push({ inventory_id: batch.inventory_id, newQty: batch.quantity - takeQty });
-                    salesEntries.push([
-                        kCode, batch.inventory_id, medicine_id, batch.batch_no, takeQty, partialAmount, mobileNo
-                    ]);
-                    batchesUsed.push({
-                        batch_no: batch.batch_no,
-                        quantity: takeQty,
-                        rack: batch.rack,
-                        shelf: batch.shelf,
-                        bin: batch.bin,
-                        expiry_date: batch.expiry_date,
-                        price: batch.price
-                    });
+                    let updates = [];
+                    let salesEntries = [];
+                    let batchesUsed = [];
+                    const mobileNo = customer_mobile || '0000000000';
                     
-                    qtyNeeded -= takeQty;
-                }
-                
-                if (qtyNeeded > 0) {
-                     return rollback(400, "Algorithm fault detecting split logic");
-                }
-                
-                let completedUpdates = 0;
-                let queryError = false;
-                
-                const finalizeTransaction = () => {
-                    if (queryError) return; 
-                    const insertSales = `INSERT INTO sales (kendra_code, inventory_id, medicine_id, batch_no, quantity, total_amount, customer_mobile) VALUES ?`;
-                    conn.query(insertSales, [salesEntries], (err) => {
-                        if (err) return rollback(500, "Failed to generate accounting records");
-                        conn.commit(err => {
-                            if (err) return rollback(500, "Commit failed");
-                            conn.release();
-                            res.json({ success: true, message: "Sale Completed", batches_used: batchesUsed });
+                    for (let i = 0; i < batchList.length; i++) {
+                        if (qtyNeeded <= 0) break;
+                        
+                        let batch = batchList[i];
+                        let takeQty = Math.min(batch.quantity, qtyNeeded);
+                        let partialAmount = takeQty * batch.price;
+                        
+                        updates.push({ inventory_id: batch.inventory_id, newQty: batch.quantity - takeQty });
+                        salesEntries.push([
+                            kCode, batch.inventory_id, medicine_id, batch.batch_no, takeQty, partialAmount, mobileNo
+                        ]);
+                        batchesUsed.push({
+                            batch_no: batch.batch_no,
+                            quantity: takeQty,
+                            rack: batch.rack || 'R-1',
+                            shelf: batch.shelf || 'S-1',
+                            bin: batch.bin || 'B-1',
+                            expiry_date: batch.expiry_date,
+                            price: batch.price
+                        });
+                        
+                        qtyNeeded -= takeQty;
+                    }
+                    
+                    let updatePromises = updates.map(u => {
+                        return new Promise((res, rej) => {
+                            conn.query("UPDATE inventory SET quantity = ? WHERE inventory_id = ?", [u.newQty, u.inventory_id], (uErr) => {
+                                if (uErr) rej(uErr);
+                                else res();
+                            });
                         });
                     });
+                    
+                    Promise.all(updatePromises)
+                        .then(() => {
+                            const insertSalesSql = `
+                                INSERT INTO sales (kendra_code, inventory_id, medicine_id, batch_no, quantity_sold, total_amount, customer_mobile)
+                                VALUES ?
+                            `;
+                            conn.query(insertSalesSql, [salesEntries], (sErr) => {
+                                if (sErr) return rollback(500, sErr.message || sErr);
+                                conn.commit(cErr => {
+                                    if (cErr) return rollback(500, "Commit failed");
+                                    conn.release();
+                                    res.json({
+                                        success: true,
+                                        message: "Sale recorded successfully using FEFO rules.",
+                                        batches_used: batchesUsed
+                                    });
+                                });
+                            });
+                        })
+                        .catch(uErr => rollback(500, uErr.message || uErr));
                 };
-                
-                if (updates.length > 0) {
-                    updates.forEach(u => {
-                        conn.query(`UPDATE inventory SET quantity = ? WHERE inventory_id = ?`, [u.newQty, u.inventory_id], (err) => {
-                            if (err) {
-                                queryError = true;
-                                return rollback(500, err.message || err);
-                            }
-                            completedUpdates++;
-                            if (completedUpdates === updates.length) finalizeTransaction();
-                        });
+
+                if (err) {
+                    const fallbackBatchesQuery = `
+                        SELECT i.*, m.price, 'R-1' as rack, 'S-1' as shelf, 'B-1' as bin 
+                        FROM inventory i 
+                        JOIN medicines m ON i.medicine_id = m.medicine_id
+                        WHERE i.kendra_code = ? AND i.medicine_id = ? AND i.quantity > 0 AND i.expiry_date >= CURDATE()
+                        ORDER BY i.expiry_date ASC
+                        FOR UPDATE
+                    `;
+                    conn.query(fallbackBatchesQuery, [kCode, medicine_id], (fbErr, fbBatches) => {
+                        if (fbErr) return rollback(500, fbErr.message || fbErr);
+                        processBatches(fbBatches);
                     });
                 } else {
-                    return rollback(400, "No inventory updates structured");
+                    processBatches(batches);
                 }
             });
         });

@@ -565,6 +565,8 @@
 
             </div>
 
+        </div>
+
         <div id="add-stock-section" class="section" style="display:none; padding: 25px;">
             <h2>Add New Stock Entry</h2>
             <form id="add-stock-form" style="max-width: 650px; margin-top: 25px;">
@@ -714,6 +716,16 @@
 
                 // Set header title
                 mainTitle.innerText = tabName === "Dashboard" ? "Kendra Staff Dashboard" : tabName;
+            }
+
+            // Trigger data refresh according to selected view
+            if (tabName === "Dashboard" || tabName === "Inventory") {
+                fetchInventory();
+            } else if (tabName === "Transfers") {
+                fetchKendraTransfers();
+            } else if (tabName === "Add Stock" || tabName === "Sales Entry") {
+                fetchMedicinesDropdown();
+                fetchInventory();
             }
         }
 
