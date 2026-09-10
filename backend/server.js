@@ -515,7 +515,7 @@ app.post("/api/sales/new", (req, res) => {
                     Promise.all(updatePromises)
                         .then(() => {
                             const insertSalesSql = `
-                                INSERT INTO sales (kendra_code, inventory_id, medicine_id, batch_no, quantity_sold, total_amount, customer_mobile)
+                                INSERT INTO sales (kendra_code, inventory_id, medicine_id, batch_no, quantity, total_amount, customer_mobile)
                                 VALUES ?
                             `;
                             conn.query(insertSalesSql, [salesEntries], (sErr) => {
