@@ -443,28 +443,24 @@ app.post("/api/sales/new", (req, res) => {
     
     if (isNaN(qtyNeeded) || qtyNeeded <= 0) return res.status(400).json({ error: "Quantity must be greater than 0" });
     
-    const executeSaleTransaction = (retriesLeft = 3) => {
-        db.getConnection((err, conn) => {
-            if (err) {
-                console.error("DB Connection Error during sale entry:", err);
-                if (retriesLeft > 1) {
-                    return setTimeout(() => executeSaleTransaction(retriesLeft - 1), 250);
-                }
-                return res.status(500).json({ error: "DB Connection Error: " + (err ? (err.message || JSON.stringify(err)) : "Pool exhausted") });
+    db.getConnection((err, conn) => {
+        if (err || !conn) {
+            console.error("Single connection acquisition failed, using pool query fallback:", err ? err.message : "No conn");
+            return performSalesWithPoolQuery(req, res, kCode, medicine_id, qtyNeeded, customer_mobile);
+        }
+        
+        conn.beginTransaction(bErr => {
+            if (bErr) {
+                conn.release();
+                return performSalesWithPoolQuery(req, res, kCode, medicine_id, qtyNeeded, customer_mobile);
             }
             
-            conn.beginTransaction(err => {
-                if (err) {
+            const rollback = (statusCode, message) => {
+                conn.rollback(() => {
                     conn.release();
-                    return res.status(500).json({ error: "Transaction start failed" });
-                }
-                
-                const rollback = (statusCode, message) => {
-                    conn.rollback(() => {
-                        conn.release();
-                        res.status(statusCode).json({ error: message });
-                    });
-                };
+                    res.status(statusCode).json({ error: message });
+                });
+            };
             
             const getBatchesQuery = `
                 SELECT i.*, m.price, COALESCE(i.rack, 'R-1') as rack, COALESCE(i.shelf, 'S-1') as shelf, COALESCE(i.bin, 'B-1') as bin 
@@ -475,7 +471,7 @@ app.post("/api/sales/new", (req, res) => {
                 FOR UPDATE
             `;
             
-            conn.query(getBatchesQuery, [kCode, medicine_id], (err, batches) => {
+            conn.query(getBatchesQuery, [kCode, medicine_id], (qErr, batches) => {
                 const processBatches = (batchList) => {
                     let totalAvailable = (batchList || []).reduce((sum, b) => sum + b.quantity, 0);
                     
@@ -543,7 +539,7 @@ app.post("/api/sales/new", (req, res) => {
                         .catch(uErr => rollback(500, uErr.message || uErr));
                 };
 
-                if (err) {
+                if (qErr) {
                     const fallbackBatchesQuery = `
                         SELECT i.*, m.price, 'R-1' as rack, 'S-1' as shelf, 'B-1' as bin 
                         FROM inventory i 
@@ -562,8 +558,95 @@ app.post("/api/sales/new", (req, res) => {
             });
         });
     });
-    executeSaleTransaction();
 });
+
+function performSalesWithPoolQuery(req, res, kCode, medicine_id, qtyNeeded, customer_mobile) {
+    const getBatchesQuery = `
+        SELECT i.*, m.price, COALESCE(i.rack, 'R-1') as rack, COALESCE(i.shelf, 'S-1') as shelf, COALESCE(i.bin, 'B-1') as bin 
+        FROM inventory i 
+        JOIN medicines m ON i.medicine_id = m.medicine_id
+        WHERE i.kendra_code = ? AND i.medicine_id = ? AND i.quantity > 0 AND i.expiry_date >= CURDATE()
+        ORDER BY i.expiry_date ASC
+    `;
+    
+    db.query(getBatchesQuery, [kCode, medicine_id], (err, batches) => {
+        if (err) {
+            const fallbackQuery = `
+                SELECT i.*, m.price, 'R-1' as rack, 'S-1' as shelf, 'B-1' as bin 
+                FROM inventory i 
+                JOIN medicines m ON i.medicine_id = m.medicine_id
+                WHERE i.kendra_code = ? AND i.medicine_id = ? AND i.quantity > 0 AND i.expiry_date >= CURDATE()
+                ORDER BY i.expiry_date ASC
+            `;
+            db.query(fallbackQuery, [kCode, medicine_id], (fbErr, fbBatches) => {
+                if (fbErr) return res.status(500).json({ error: "Failed to fetch inventory: " + fbErr.message });
+                processPoolBatches(fbBatches);
+            });
+        } else {
+            processPoolBatches(batches);
+        }
+        
+        function processPoolBatches(batchList) {
+            let totalAvailable = (batchList || []).reduce((sum, b) => sum + b.quantity, 0);
+            if (qtyNeeded > totalAvailable) {
+                return res.status(400).json({ error: `Insufficient valid stock! Available: ${totalAvailable}, Requested: ${qtyNeeded}` });
+            }
+            
+            let updates = [];
+            let salesEntries = [];
+            let batchesUsed = [];
+            const mobileNo = customer_mobile || '0000000000';
+            
+            for (let i = 0; i < batchList.length; i++) {
+                if (qtyNeeded <= 0) break;
+                let batch = batchList[i];
+                let takeQty = Math.min(batch.quantity, qtyNeeded);
+                let partialAmount = takeQty * batch.price;
+                
+                updates.push({ inventory_id: batch.inventory_id, newQty: batch.quantity - takeQty });
+                salesEntries.push([
+                    kCode, batch.inventory_id, medicine_id, batch.batch_no, takeQty, partialAmount, mobileNo
+                ]);
+                batchesUsed.push({
+                    batch_no: batch.batch_no,
+                    quantity: takeQty,
+                    rack: batch.rack || 'R-1',
+                    shelf: batch.shelf || 'S-1',
+                    bin: batch.bin || 'B-1',
+                    expiry_date: batch.expiry_date,
+                    price: batch.price
+                });
+                qtyNeeded -= takeQty;
+            }
+            
+            let updatePromises = updates.map(u => {
+                return new Promise((resolve, reject) => {
+                    db.query("UPDATE inventory SET quantity = ? WHERE inventory_id = ?", [u.newQty, u.inventory_id], (uErr) => {
+                        if (uErr) reject(uErr);
+                        else resolve();
+                    });
+                });
+            });
+            
+            Promise.all(updatePromises)
+                .then(() => {
+                    const insertSalesSql = `
+                        INSERT INTO sales (kendra_code, inventory_id, medicine_id, batch_no, quantity, total_amount, customer_mobile)
+                        VALUES ?
+                    `;
+                    db.query(insertSalesSql, [salesEntries], (sErr) => {
+                        if (sErr) return res.status(500).json({ error: "Failed to insert sale: " + sErr.message });
+                        res.json({
+                            success: true,
+                            message: "Sale recorded successfully using FEFO rules.",
+                            batches_used: batchesUsed
+                        });
+                    });
+                })
+                .catch(uErr => res.status(500).json({ error: "Inventory update failed: " + uErr.message }));
+        }
+    });
+}
 
 // API 12: Admin Summary KPIs & System Alerts
 app.get("/api/admin/summary", async (req, res) => {
