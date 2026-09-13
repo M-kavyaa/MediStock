@@ -765,17 +765,17 @@
                 const headerBadge = document.getElementById('kendra-header-badge');
                 if (headerBadge && data.kendra_name) headerBadge.innerText = `${kendraCode} - ${data.kendra_name}`;
                 
-                const skuVal = (data.total_skus !== undefined && data.total_skus !== null && !isNaN(data.total_skus)) ? data.total_skus : 4;
-                const unitsVal = (data.total_units !== undefined && data.total_units !== null && !isNaN(data.total_units)) ? data.total_units : 840;
-                const expiringVal = (data.expiring_soon !== undefined && data.expiring_soon !== null && !isNaN(data.expiring_soon)) ? data.expiring_soon : 1;
-                const lowVal = (data.low_stock !== undefined && data.low_stock !== null && !isNaN(data.low_stock)) ? data.low_stock : 1;
-                const salesVal = (data.today_sales !== undefined && data.today_sales !== null && !isNaN(data.today_sales)) ? data.today_sales : 0;
+                const skuVal = (data.total_skus !== undefined && data.total_skus !== null && !isNaN(data.total_skus)) ? Number(data.total_skus) : 0;
+                const unitsVal = (data.total_units !== undefined && data.total_units !== null && !isNaN(data.total_units)) ? Number(data.total_units) : 0;
+                const expiringVal = (data.expiring_soon !== undefined && data.expiring_soon !== null && !isNaN(data.expiring_soon)) ? Number(data.expiring_soon) : 0;
+                const lowVal = (data.low_stock !== undefined && data.low_stock !== null && !isNaN(data.low_stock)) ? Number(data.low_stock) : 0;
+                const salesVal = (data.today_sales !== undefined && data.today_sales !== null && !isNaN(data.today_sales)) ? Number(data.today_sales) : 0;
 
                 const skuEl = document.getElementById('kpi-total-skus');
                 if (skuEl) skuEl.innerText = skuVal;
                 
                 const unitsEl = document.getElementById('kpi-total-units');
-                if (unitsEl) unitsEl.innerText = Number(unitsVal).toLocaleString();
+                if (unitsEl) unitsEl.innerText = unitsVal.toLocaleString();
                 
                 const expiringEl = document.getElementById('kpi-expiring-soon');
                 if (expiringEl) expiringEl.innerText = expiringVal;
@@ -784,23 +784,11 @@
                 if (lowEl) lowEl.innerText = lowVal;
                 
                 const salesEl = document.getElementById('kpi-today-sales');
-                if (salesEl) salesEl.innerText = `₹ ${Number(salesVal).toLocaleString()}`;
+                if (salesEl) salesEl.innerText = `₹ ${salesVal.toLocaleString()}`;
             } catch (err) {
                 console.error("Failed to fetch Kendra summary:", err);
                 const skuEl = document.getElementById('kpi-total-skus');
-                if (skuEl && (skuEl.innerText === 'undefined' || skuEl.innerText === '')) skuEl.innerText = '4';
-                
-                const unitsEl = document.getElementById('kpi-total-units');
-                if (unitsEl && (unitsEl.innerText === '' || unitsEl.innerText === '0')) unitsEl.innerText = '840';
-                
-                const expiringEl = document.getElementById('kpi-expiring-soon');
-                if (expiringEl && (expiringEl.innerText === '')) expiringEl.innerText = '1';
-                
-                const lowEl = document.getElementById('kpi-low-stock-count');
-                if (lowEl && (lowEl.innerText === '')) lowEl.innerText = '1';
-                
-                const salesEl = document.getElementById('kpi-today-sales');
-                if (salesEl && (salesEl.innerText === '')) salesEl.innerText = '₹ 0';
+                if (skuEl && skuEl.innerText === 'undefined') skuEl.innerText = '0';
             }
         }
 

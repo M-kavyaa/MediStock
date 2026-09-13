@@ -823,12 +823,12 @@ async function fetchAdminSummary() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     
-    const kendras = (data.total_kendras !== undefined && data.total_kendras !== null && !isNaN(data.total_kendras)) ? data.total_kendras : 3;
-    const medicines = (data.total_medicines !== undefined && data.total_medicines !== null && !isNaN(data.total_medicines)) ? data.total_medicines : 7;
-    const expiring = (data.expiring_soon !== undefined && data.expiring_soon !== null && !isNaN(data.expiring_soon)) ? data.expiring_soon : 1;
-    const expired = (data.expired_stock !== undefined && data.expired_stock !== null && !isNaN(data.expired_stock)) ? data.expired_stock : 0;
-    const lowStockKendras = (data.low_stock_kendras !== undefined && data.low_stock_kendras !== null && !isNaN(data.low_stock_kendras)) ? data.low_stock_kendras : 1;
-    const transfers = (data.transfers_this_month !== undefined && data.transfers_this_month !== null && !isNaN(data.transfers_this_month)) ? data.transfers_this_month : 2;
+    const kendras = (data.total_kendras !== undefined && data.total_kendras !== null && !isNaN(data.total_kendras)) ? Number(data.total_kendras) : 0;
+    const medicines = (data.total_medicines !== undefined && data.total_medicines !== null && !isNaN(data.total_medicines)) ? Number(data.total_medicines) : 0;
+    const expiring = (data.expiring_soon !== undefined && data.expiring_soon !== null && !isNaN(data.expiring_soon)) ? Number(data.expiring_soon) : 0;
+    const expired = (data.expired_stock !== undefined && data.expired_stock !== null && !isNaN(data.expired_stock)) ? Number(data.expired_stock) : 0;
+    const lowStockKendras = (data.low_stock_kendras !== undefined && data.low_stock_kendras !== null && !isNaN(data.low_stock_kendras)) ? Number(data.low_stock_kendras) : 0;
+    const transfers = (data.transfers_this_month !== undefined && data.transfers_this_month !== null && !isNaN(data.transfers_this_month)) ? Number(data.transfers_this_month) : 0;
 
     const kendraEl = document.getElementById("admin-kpi-kendras");
     if (kendraEl) kendraEl.innerText = kendras;

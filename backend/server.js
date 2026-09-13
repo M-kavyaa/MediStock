@@ -715,26 +715,13 @@ app.get("/api/admin/summary", async (req, res) => {
     const lowStockKendras = await queryAsync("SELECT COUNT(DISTINCT kendra_code) as cnt FROM inventory WHERE quantity < 20");
     const transfersMonth = await queryAsync("SELECT COUNT(*) as cnt FROM transfers WHERE MONTH(transfer_date) = MONTH(CURDATE()) AND YEAR(transfer_date) = YEAR(CURDATE())");
 
-    let kendrasCount = totalKendras.length > 0 ? totalKendras[0].cnt : 0;
-    let medicinesCount = totalMedicines.length > 0 ? totalMedicines[0].cnt : 0;
-    let expiringCount = expiringSoon.length > 0 ? expiringSoon[0].cnt : 0;
-    let expiredCount = expiredStock.length > 0 ? expiredStock[0].cnt : 0;
-    let lowStockCount = lowStockKendras.length > 0 ? lowStockKendras[0].cnt : 0;
-    let transfersCount = transfersMonth.length > 0 ? transfersMonth[0].cnt : 0;
-
-    if (kendrasCount === 0) kendrasCount = MOCK_KENDRAS.length || 3;
-    if (medicinesCount === 0) medicinesCount = MOCK_MEDICINES.length || 7;
-    if (expiringCount === 0) expiringCount = 1;
-    if (lowStockCount === 0) lowStockCount = 1;
-    if (transfersCount === 0) transfersCount = MOCK_TRANSFERS.length || 2;
-
     res.json({
-      total_kendras: kendrasCount,
-      total_medicines: medicinesCount,
-      expiring_soon: expiringCount,
-      expired_stock: expiredCount,
-      low_stock_kendras: lowStockCount,
-      transfers_this_month: transfersCount
+      total_kendras: totalKendras.length > 0 ? Number(totalKendras[0].cnt) : 0,
+      total_medicines: totalMedicines.length > 0 ? Number(totalMedicines[0].cnt) : 0,
+      expiring_soon: expiringSoon.length > 0 ? Number(expiringSoon[0].cnt) : 0,
+      expired_stock: expiredStock.length > 0 ? Number(expiredStock[0].cnt) : 0,
+      low_stock_kendras: lowStockKendras.length > 0 ? Number(lowStockKendras[0].cnt) : 0,
+      transfers_this_month: transfersMonth.length > 0 ? Number(transfersMonth[0].cnt) : 0
     });
   } catch (err) {
     console.warn("DB error in /api/admin/summary, using fallback mock dataset:", err.message);
@@ -821,28 +808,13 @@ app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
     const kendraObj = MOCK_KENDRAS.find(k => k.kendra_code === kendra_code);
     const defaultName = kendraObj ? kendraObj.kendra_name : `Jan Aushadhi Kendra (${kendra_code})`;
 
-    let totalSkus = skusRes.length > 0 ? skusRes[0].total_skus : 0;
-    let totalUnits = unitsRes.length > 0 ? unitsRes[0].total_units : 0;
-    let expiringSoon = expiringRes.length > 0 ? expiringRes[0].expiring_soon : 0;
-    let lowStock = lowStockRes.length > 0 ? lowStockRes[0].low_stock : 0;
-    let todaySales = salesRes.length > 0 ? salesRes[0].today_sales : 0;
-
-    if (totalSkus === 0 && totalUnits === 0) {
-      const mockItems = MOCK_INVENTORY.filter(item => item.kendra_code === kendra_code);
-      const itemsToUse = mockItems.length > 0 ? mockItems : MOCK_INVENTORY;
-      totalSkus = new Set(itemsToUse.map(i => i.medicine_id)).size;
-      totalUnits = itemsToUse.reduce((acc, i) => acc + (Number(i.quantity) || 0), 0);
-      expiringSoon = 1;
-      lowStock = itemsToUse.filter(i => (Number(i.quantity) || 0) < 20).length;
-    }
-
     res.json({
       kendra_name: (kNameRes.length > 0 && kNameRes[0].kendra_name) ? kNameRes[0].kendra_name : defaultName,
-      total_skus: totalSkus,
-      total_units: totalUnits,
-      expiring_soon: expiringSoon,
-      low_stock: lowStock,
-      today_sales: todaySales
+      total_skus: skusRes.length > 0 ? Number(skusRes[0].total_skus) : 0,
+      total_units: unitsRes.length > 0 ? Number(unitsRes[0].total_units) : 0,
+      expiring_soon: expiringRes.length > 0 ? Number(expiringRes[0].expiring_soon) : 0,
+      low_stock: lowStockRes.length > 0 ? Number(lowStockRes[0].low_stock) : 0,
+      today_sales: salesRes.length > 0 ? Number(salesRes[0].today_sales) : 0
     });
   } catch (err) {
     console.warn("DB error in /api/kendra/summary, using fallback mock dataset:", err.message);
