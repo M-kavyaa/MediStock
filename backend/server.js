@@ -446,11 +446,11 @@ app.post("/api/sales/new", (req, res) => {
     const executeSaleTransaction = (retriesLeft = 3) => {
         db.getConnection((err, conn) => {
             if (err) {
-                console.error("DB Connection Error during sale entry:", err.message);
+                console.error("DB Connection Error during sale entry:", err);
                 if (retriesLeft > 1) {
                     return setTimeout(() => executeSaleTransaction(retriesLeft - 1), 250);
                 }
-                return res.status(500).json({ error: "Database busy or reconnecting. Please click Record Sale again." });
+                return res.status(500).json({ error: "DB Connection Error: " + (err ? (err.message || JSON.stringify(err)) : "Pool exhausted") });
             }
             
             conn.beginTransaction(err => {
