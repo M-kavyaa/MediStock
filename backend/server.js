@@ -9,11 +9,11 @@ app.use(cors());
 app.use(express.json());
 
 const dbConfig = {
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASS || "",
-  database: process.env.DB_NAME || "medistock",
-  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+  host: process.env.DB_HOST || process.env.MYSQLHOST || "localhost",
+  user: process.env.DB_USER || process.env.MYSQLUSER || "root",
+  password: process.env.DB_PASS || process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || "",
+  database: process.env.DB_NAME || process.env.MYSQLDATABASE || "medistock",
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : (process.env.MYSQLPORT ? parseInt(process.env.MYSQLPORT, 10) : 3306),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -21,7 +21,10 @@ const dbConfig = {
   keepAliveInitialDelay: 0
 };
 
-if (process.env.DB_SSL === "true") {
+const hostStr = (dbConfig.host || "").toLowerCase().trim();
+const isRemoteHost = hostStr !== "" && hostStr !== "localhost" && hostStr !== "127.0.0.1" && hostStr !== "::1";
+
+if (process.env.DB_SSL === "true" || process.env.DB_SSL === "REQUIRED" || isRemoteHost) {
   dbConfig.ssl = { rejectUnauthorized: false };
 }
 
@@ -32,7 +35,7 @@ db.getConnection((err, connection) => {
   if (err) {
     console.log("Database connection failed ❌:", err.message);
   } else {
-    console.log("MySQL Database Connected Successfully ✅");
+    console.log("MySQL Database Connected Successfully ✅ (Host: " + dbConfig.host + ")");
     connection.query("ALTER TABLE inventory ADD COLUMN rack VARCHAR(20) DEFAULT 'R-1', ADD COLUMN shelf VARCHAR(20) DEFAULT 'S-1', ADD COLUMN bin VARCHAR(20) DEFAULT 'B-1'", (alterErr) => {
       if (alterErr) {
         connection.query("ALTER TABLE inventory ADD COLUMN rack VARCHAR(20) DEFAULT 'R-1'", () => {});
@@ -103,15 +106,37 @@ const queryAsync = (sql, params = []) => {
   });
 };
 
+// Health & DB Diagnostic Endpoint
+app.get("/api/db-status", (req, res) => {
+  db.query("SELECT 1 as ping", (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        connected: false,
+        host: dbConfig.host,
+        database: dbConfig.database,
+        ssl_enabled: !!dbConfig.ssl,
+        error: err.message
+      });
+    }
+    res.json({
+      connected: true,
+      host: dbConfig.host,
+      database: dbConfig.database,
+      ssl_enabled: !!dbConfig.ssl,
+      ping: results && results[0] ? results[0].ping : 1
+    });
+  });
+});
+
 // API 1: Get all Kendras
 app.get("/api/kendras", (req, res) => {
   const query = "SELECT kendra_code, kendra_name, state, district, pin, address FROM kendras ORDER BY kendra_code ASC";
   db.query(query, (err, results) => {
-    if (err || !results || results.length === 0) {
-      console.warn("DB connection unavailable/empty, using MOCK_KENDRAS dataset");
+    if (err) {
+      console.warn("DB connection error, using MOCK_KENDRAS dataset:", err.message);
       return res.json(MOCK_KENDRAS);
     }
-    res.json(results);
+    res.json(results && results.length > 0 ? results : MOCK_KENDRAS);
   });
 });
 
@@ -155,7 +180,7 @@ app.get("/api/inventory/:kendra_code", (req, res) => {
     ORDER BY i.expiry_date ASC
   `;
   db.query(query, [kendra_code], (err, results) => {
-    if (err || !results || results.length === 0) {
+    if (err) {
       const fallbackQuery = `
         SELECT m.generic_name AS medicine_name, i.medicine_id, i.batch_no, i.quantity, i.expiry_date, m.price,
                'R-1' as rack, 'S-1' as shelf, 'B-1' as bin
@@ -165,14 +190,15 @@ app.get("/api/inventory/:kendra_code", (req, res) => {
         ORDER BY i.expiry_date ASC
       `;
       db.query(fallbackQuery, [kendra_code], (fbErr, fbResults) => {
-        if (fbErr || !fbResults || fbResults.length === 0) {
+        if (fbErr) {
+          console.warn("DB query error for inventory, using MOCK_INVENTORY fallback:", fbErr.message);
           const filtered = MOCK_INVENTORY.filter(item => item.kendra_code === kendra_code);
           return res.json(filtered.length > 0 ? filtered : MOCK_INVENTORY);
         }
-        res.json(fbResults);
+        res.json(fbResults || []);
       });
     } else {
-      res.json(results);
+      res.json(results || []);
     }
   });
 });
@@ -446,10 +472,11 @@ app.put("/api/transfers/:id/status", (req, res) => {
 // API 9: Fetch Medicine List
 app.get("/api/medicines", (req, res) => {
     db.query("SELECT * FROM medicines", (err, results) => {
-        if (err || !results || results.length === 0) {
+        if (err) {
+            console.warn("DB query error for medicines, using MOCK_MEDICINES fallback:", err.message);
             return res.json(MOCK_MEDICINES);
         }
-        res.json(results);
+        res.json(results && results.length > 0 ? results : MOCK_MEDICINES);
     });
 });
 
