@@ -85,16 +85,30 @@ const MOCK_MEDICINES = [
 ];
 
 const MOCK_INVENTORY = [
-  { kendra_code: 'JA001', medicine_id: 1, medicine_name: 'Paracetamol 500mg', batch_no: 'BCH-P001', quantity: 500, expiry_date: '2027-09-09', price: '15.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
-  { kendra_code: 'JA001', medicine_id: 1, medicine_name: 'Paracetamol 500mg', batch_no: 'BCH-P002', quantity: 200, expiry_date: '2026-11-08', price: '15.00', rack: 'R-1', shelf: 'S-2', bin: 'B-3' },
-  { kendra_code: 'JA001', medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A001', quantity: 25, expiry_date: '2026-09-29', price: '30.00', rack: 'R-3', shelf: 'S-1', bin: 'B-4' },
-  { kendra_code: 'JA001', medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O001', quantity: 15, expiry_date: '2026-08-30', price: '18.00', rack: 'R-4', shelf: 'S-1', bin: 'B-1' },
-  { kendra_code: 'JA001', medicine_id: 4, medicine_name: 'Metformin 500mg', batch_no: 'BCH-M001', quantity: 100, expiry_date: '2027-02-09', price: '22.00', rack: 'R-5', shelf: 'S-2', bin: 'B-3' }
+  { kendra_code: 'JA001', medicine_id: 1, medicine_name: 'Paracetamol 500mg', batch_no: 'BCH-P001', quantity: 500, expiry_date: '2027-04-12', price: '15.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 1, medicine_name: 'Paracetamol 500mg', batch_no: 'BCH-P002', quantity: 189, expiry_date: '2026-06-11', price: '15.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 1, medicine_name: 'Paracetamol 500mg', batch_no: 'BCH-P003', quantity: 100, expiry_date: '2026-04-07', price: '15.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 1, medicine_name: 'Paracetamol 500mg', batch_no: 'BCH-P004', quantity: 58, expiry_date: '2026-10-12', price: '15.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A001', quantity: 25, expiry_date: '2026-05-02', price: '30.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A002', quantity: 500, expiry_date: '2027-10-12', price: '30.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A003', quantity: 5, expiry_date: '2027-12-12', price: '30.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA002', medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A002', quantity: 450, expiry_date: '2027-10-12', price: '30.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA002', medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A005', quantity: 50, expiry_date: '2027-05-04', price: '30.00', rack: 'R-5', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O001', quantity: 15, expiry_date: '2026-04-02', price: '18.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O002', quantity: 0, expiry_date: '2026-10-12', price: '18.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA003', medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O002', quantity: 300, expiry_date: '2027-06-12', price: '18.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA002', medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O1002', quantity: 20, expiry_date: '2028-11-10', price: '18.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O005', quantity: 50, expiry_date: '2027-05-04', price: '18.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 4, medicine_name: 'Metformin 500mg', batch_no: 'BCH-M001', quantity: 100, expiry_date: '2026-09-12', price: '22.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 4, medicine_name: 'Metformin 500mg', batch_no: 'BCH-M002', quantity: 15, expiry_date: '2027-04-12', price: '22.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA001', medicine_id: 4, medicine_name: 'Metformin 500mg', batch_no: 'BCH-M003', quantity: 8, expiry_date: '2026-11-23', price: '22.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' },
+  { kendra_code: 'JA002', medicine_id: 4, medicine_name: 'Metformin 500mg', batch_no: 'BHC-M005', quantity: 8, expiry_date: '2027-02-25', price: '22.00', rack: 'R-1', shelf: 'S-1', bin: 'B-1' }
 ];
 
 const MOCK_TRANSFERS = [
   { transfer_id: 1, medicine_id: 1, medicine_name: 'Paracetamol 500mg', batch_no: 'BCH-P002', from_kendra_code: 'JA001', from_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', to_kendra_code: 'JA002', to_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - Indiranagar', quantity: 50, status: 'Approved' },
-  { transfer_id: 2, medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A002', from_kendra_code: 'JA002', from_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - Indiranagar', to_kendra_code: 'JA001', to_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', quantity: 30, status: 'In Transit' }
+  { transfer_id: 2, medicine_id: 2, medicine_name: 'Azithromycin 250mg', batch_no: 'BCH-A002', from_kendra_code: 'JA002', from_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - Indiranagar', to_kendra_code: 'JA001', to_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', quantity: 30, status: 'In Transit' },
+  { transfer_id: 3, medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O002', from_kendra_code: 'JA003', from_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - Koramangala', to_kendra_code: 'JA001', to_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', quantity: 100, status: 'Completed' }
 ];
 
 // Helper promise wrapper for db.query
