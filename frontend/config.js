@@ -8,5 +8,5 @@ const API_BASE_URL = (
   window.location.hostname === 'localhost' ||
   window.location.hostname === '127.0.0.1'
 ) 
-  ? 'http://localhost:5000' 
+  ? (window.MEDIWISE_API_URL || 'http://localhost:5001') 
   : (window.MEDIWISE_API_URL || RENDER_BACKEND_URL);
