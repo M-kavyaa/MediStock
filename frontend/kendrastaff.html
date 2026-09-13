@@ -637,7 +637,7 @@
                         <input type="number" id="sale-quantity" placeholder="Units" min="1" required>
                     </div>
                 </div>
-                <button type="submit" class="btn" style="margin-top: 15px; background: #28a745;">Generate Bill & Record Sale</button>
+                <button type="submit" id="record-sale-btn" class="btn" style="margin-top: 15px; background: #28a745;">Generate Bill & Record Sale</button>
             </form>
         </div>
 
@@ -1090,6 +1090,14 @@
 
         document.getElementById("sales-entry-form")?.addEventListener("submit", async function(e) {
             e.preventDefault();
+            const submitBtn = document.getElementById("record-sale-btn") || this.querySelector('button[type="submit"]');
+            const origText = submitBtn ? submitBtn.innerText : "Generate Bill & Record Sale";
+            
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "⏳ Recording Sale...";
+            }
+
             const kendraCode = localStorage.getItem("kendra_code") || "JA001";
             const payload = {
                 kendra_code: kendraCode,
@@ -1124,7 +1132,15 @@
                 } else {
                     alert(data.error || "Transaction failed");
                 }
-            } catch(err) { console.error(err); }
+            } catch(err) { 
+                console.error("Sales entry submission error:", err); 
+                alert("Failed to record sale: " + (err.message || "Network error. Please try again."));
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = origText;
+                }
+            }
         });
 
         document.addEventListener('DOMContentLoaded', () => { 

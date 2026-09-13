@@ -16,7 +16,9 @@ const dbConfig = {
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 };
 
 if (process.env.DB_SSL === "true") {
@@ -441,21 +443,28 @@ app.post("/api/sales/new", (req, res) => {
     
     if (isNaN(qtyNeeded) || qtyNeeded <= 0) return res.status(400).json({ error: "Quantity must be greater than 0" });
     
-    db.getConnection((err, conn) => {
-        if (err) return res.status(500).json({ error: "DB Connection Error" });
-        
-        conn.beginTransaction(err => {
+    const executeSaleTransaction = (retriesLeft = 3) => {
+        db.getConnection((err, conn) => {
             if (err) {
-                conn.release();
-                return res.status(500).json({ error: "Transaction start failed" });
+                console.error("DB Connection Error during sale entry:", err.message);
+                if (retriesLeft > 1) {
+                    return setTimeout(() => executeSaleTransaction(retriesLeft - 1), 250);
+                }
+                return res.status(500).json({ error: "Database busy or reconnecting. Please click Record Sale again." });
             }
             
-            const rollback = (statusCode, message) => {
-                conn.rollback(() => {
+            conn.beginTransaction(err => {
+                if (err) {
                     conn.release();
-                    res.status(statusCode).json({ error: message });
-                });
-            };
+                    return res.status(500).json({ error: "Transaction start failed" });
+                }
+                
+                const rollback = (statusCode, message) => {
+                    conn.rollback(() => {
+                        conn.release();
+                        res.status(statusCode).json({ error: message });
+                    });
+                };
             
             const getBatchesQuery = `
                 SELECT i.*, m.price, COALESCE(i.rack, 'R-1') as rack, COALESCE(i.shelf, 'S-1') as shelf, COALESCE(i.bin, 'B-1') as bin 
@@ -553,6 +562,7 @@ app.post("/api/sales/new", (req, res) => {
             });
         });
     });
+    executeSaleTransaction();
 });
 
 // API 12: Admin Summary KPIs & System Alerts
