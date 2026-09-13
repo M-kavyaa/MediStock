@@ -992,6 +992,17 @@
             }
         }
 
+        function formatAlertMessage(errObj, defaultMsg) {
+            if (!errObj) return defaultMsg;
+            if (typeof errObj === 'string') return errObj;
+            if (errObj.message && typeof errObj.message === 'string') return errObj.message;
+            if (errObj.error && typeof errObj.error === 'string') return errObj.error;
+            try {
+                const jsonStr = JSON.stringify(errObj);
+                return jsonStr !== '{}' ? jsonStr : defaultMsg;
+            } catch(e) { return defaultMsg; }
+        }
+
         async function updateTransferStatus(id, newStatus) {
             if(!confirm(`Update this transfer tracking to: ${newStatus}?`)) return;
             try {
@@ -1006,7 +1017,7 @@
                     if (newStatus === 'Completed') alert("Received safely! Destination stock added.");
                     if(typeof fetchInventory === 'function') fetchInventory();
                 } else {
-                    alert(data.error || "Sync Error");
+                    alert(formatAlertMessage(data.error, "Sync Error"));
                 }
             } catch(e) { console.error(e); alert("Server communication error"); }
         }
@@ -1054,7 +1065,7 @@
                     this.reset();
                     if(typeof fetchInventory === 'function') fetchInventory(); 
                 } else {
-                    alert(data.error || "Failed to add stock");
+                    alert(formatAlertMessage(data.error, "Failed to add stock"));
                 }
             } catch(err) { console.error(err); }
         });
@@ -1139,7 +1150,7 @@
                     if(typeof fetchInventory === 'function') fetchInventory(); 
                     if(typeof fetchKendraSummary === 'function') fetchKendraSummary();
                 } else {
-                    alert(data.error || "Transaction failed");
+                    alert(formatAlertMessage(data.error, "Transaction failed"));
                 }
             } catch(err) { 
                 console.error("Sales entry submission error:", err); 
