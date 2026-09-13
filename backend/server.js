@@ -16,6 +16,7 @@ const dbConfig = {
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : (process.env.MYSQLPORT ? parseInt(process.env.MYSQLPORT, 10) : 3306),
   waitForConnections: true,
   connectionLimit: 10,
+  connectTimeout: 4000,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0
