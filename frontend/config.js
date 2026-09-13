@@ -11,4 +11,4 @@ const isLocalEnv = (
 
 const API_BASE_URL = isLocalEnv
   ? (window.MEDIWISE_API_URL || 'http://localhost:5000')
-  : (window.MEDIWISE_API_URL || (window.location.origin && window.location.origin !== 'null' ? window.location.origin : RENDER_BACKEND_URL));
+  : (window.MEDIWISE_API_URL || RENDER_BACKEND_URL);
