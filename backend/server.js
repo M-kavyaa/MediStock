@@ -111,6 +111,8 @@ const MOCK_TRANSFERS = [
   { transfer_id: 3, medicine_id: 3, medicine_name: 'ORS Powder', batch_no: 'BCH-O002', from_kendra_code: 'JA003', from_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - Koramangala', to_kendra_code: 'JA001', to_kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', quantity: 100, status: 'Completed' }
 ];
 
+const MOCK_SALES = [];
+
 // Helper promise wrapper for db.query
 const queryAsync = (sql, params = []) => {
   return new Promise((resolve, reject) => {
@@ -740,17 +742,41 @@ app.post("/api/sales/new", (req, res) => {
 });
 
 function processMockSales(req, res, kCode, medicine_id, qtyNeeded, customer_mobile) {
-    let mockBatches = MOCK_INVENTORY.filter(i => i.kendra_code === kCode && i.medicine_id == medicine_id && i.quantity > 0);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let mockBatches = MOCK_INVENTORY.filter(i => {
+        if (i.kendra_code !== kCode || i.medicine_id != medicine_id || (Number(i.quantity) || 0) <= 0) return false;
+        const expDate = new Date(i.expiry_date);
+        expDate.setHours(0,0,0,0);
+        return expDate >= today;
+    });
+
+    mockBatches.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+
     let totalAvailable = mockBatches.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
     if (qtyNeeded > totalAvailable) {
         return res.status(400).json({ error: `Insufficient valid stock! Available: ${totalAvailable}, Requested: ${qtyNeeded}` });
     }
+
     let batchesUsed = [];
     for (let i = 0; i < mockBatches.length; i++) {
         if (qtyNeeded <= 0) break;
         let b = mockBatches[i];
         let takeQty = Math.min(b.quantity, qtyNeeded);
         b.quantity -= takeQty;
+        const partialAmount = takeQty * parseFloat(b.price || 0);
+
+        MOCK_SALES.push({
+            kendra_code: kCode,
+            medicine_id: parseInt(medicine_id, 10),
+            batch_no: b.batch_no,
+            quantity: takeQty,
+            total_amount: partialAmount,
+            customer_mobile: customer_mobile || '0000000000',
+            sale_date: new Date().toISOString()
+        });
+
         batchesUsed.push({
             batch_no: b.batch_no,
             quantity: takeQty,
@@ -762,6 +788,7 @@ function processMockSales(req, res, kCode, medicine_id, qtyNeeded, customer_mobi
         });
         qtyNeeded -= takeQty;
     }
+
     return res.json({
         success: true,
         message: "Sale recorded successfully using FEFO rules.",
@@ -991,6 +1018,11 @@ app.get("/api/admin/reports", async (req, res) => {
 // API 15: Kendra Staff Summary Metrics & Today's Sales
 app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
   const kendra_code = req.params.kendra_code || "JA001";
+  const todayStr = new Date().toDateString();
+  const mockTodaySales = MOCK_SALES
+    .filter(s => s.kendra_code === kendra_code && new Date(s.sale_date).toDateString() === todayStr)
+    .reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
+
   try {
     const kNameRes = await queryAsync("SELECT kendra_name FROM kendras WHERE kendra_code = ?", [kendra_code]);
     const skusRes = await queryAsync("SELECT COUNT(DISTINCT medicine_id) as total_skus FROM inventory WHERE kendra_code = ?", [kendra_code]);
@@ -1001,6 +1033,7 @@ app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
 
     const kendraObj = MOCK_KENDRAS.find(k => k.kendra_code === kendra_code);
     const defaultName = kendraObj ? kendraObj.kendra_name : `Jan Aushadhi Kendra (${kendra_code})`;
+    const dbSales = salesRes.length > 0 ? Number(salesRes[0].today_sales) : 0;
 
     res.json({
       kendra_name: (kNameRes.length > 0 && kNameRes[0].kendra_name) ? kNameRes[0].kendra_name : defaultName,
@@ -1008,7 +1041,7 @@ app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
       total_units: unitsRes.length > 0 ? Number(unitsRes[0].total_units) : 0,
       expiring_soon: expiringRes.length > 0 ? Number(expiringRes[0].expiring_soon) : 0,
       low_stock: lowStockRes.length > 0 ? Number(lowStockRes[0].low_stock) : 0,
-      today_sales: salesRes.length > 0 ? Number(salesRes[0].today_sales) : 0
+      today_sales: dbSales + mockTodaySales
     });
   } catch (err) {
     console.warn("DB error in /api/kendra/summary, using fallback mock dataset:", err.message);
@@ -1025,7 +1058,7 @@ app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
       total_units: totalUnits || 840,
       expiring_soon: 1,
       low_stock: lowStock || 1,
-      today_sales: 0
+      today_sales: mockTodaySales
     });
   }
 });
