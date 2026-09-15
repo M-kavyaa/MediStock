@@ -50,6 +50,17 @@ db.getConnection((err, connection) => {
   }
 });
 
+// Operational Project Configuration Assumptions for Smart Reorder & Redistribution
+const CONFIG = {
+  LOOKBACK_DAYS: 30,          // Sales history lookback window (days)
+  LEAD_TIME_DAYS: 5,          // Warehouse order delivery lead time (days)
+  SAFETY_BUFFER_DAYS: 7,      // Safety buffer days
+  ROP_DAYS: 12,               // Lead time + Safety buffer = 12 days
+  NEAR_EXPIRY_DAYS: 45,       // Near-expiry prioritization horizon (days)
+  MIN_TRANSFER_QTY: 10,       // Default minimum threshold for ordinary transfers
+  MIN_URGENT_TRANSFER_QTY: 5  // Minimum threshold for urgent near-expiry transfers
+};
+
 // Robust Fallback Datasets for Cloud DB Outages / Cold Starts
 const MOCK_KENDRAS = [
   { sno: 1, kendra_code: 'JA001', kendra_name: 'Pradhan Mantri Jan Aushadhi Kendra - MG Road', state: 'Karnataka', district: 'Bengaluru', pin: '560001', address: 'MG Road, Bengaluru, Karnataka' },
@@ -81,7 +92,20 @@ const MOCK_MEDICINES = [
   { medicine_id: 4, generic_name: 'Metformin 500mg', price: '22.00', composition: 'Metformin', group_name: 'Anti-diabetic' },
   { medicine_id: 5, generic_name: 'Amoxicillin 500mg', price: '35.00', composition: 'Amoxicillin', group_name: 'Antibiotics' },
   { medicine_id: 6, generic_name: 'Cetirizine 10mg', price: '10.00', composition: 'Cetirizine', group_name: 'Antihistamines' },
-  { medicine_id: 7, generic_name: 'Pantoprazole 40mg', price: '25.00', composition: 'Pantoprazole', group_name: 'Antacids' }
+  { medicine_id: 7, generic_name: 'Pantoprazole 40mg', price: '25.00', composition: 'Pantoprazole', group_name: 'Antacids' },
+  { medicine_id: 8, generic_name: 'Amlodipine 5mg', price: '12.00', composition: 'Amlodipine', group_name: 'Antihypertensives' },
+  { medicine_id: 9, generic_name: 'Telmisartan 40mg', price: '28.00', composition: 'Telmisartan', group_name: 'Antihypertensives' },
+  { medicine_id: 10, generic_name: 'Atorvastatin 10mg', price: '32.00', composition: 'Atorvastatin', group_name: 'Cardiovascular' },
+  { medicine_id: 11, generic_name: 'Omeprazole 20mg', price: '16.00', composition: 'Omeprazole', group_name: 'Antacids' },
+  { medicine_id: 12, generic_name: 'Ciprofloxacin 500mg', price: '34.00', composition: 'Ciprofloxacin', group_name: 'Antibiotics' },
+  { medicine_id: 13, generic_name: 'Amoxicillin-Clavulanate 625mg', price: '65.00', composition: 'Amoxicillin + Clavulanic Acid', group_name: 'Antibiotics' },
+  { medicine_id: 14, generic_name: 'Ibuprofen 400mg', price: '14.00', composition: 'Ibuprofen', group_name: 'Analgesics' },
+  { medicine_id: 15, generic_name: 'Diclofenac 50mg', price: '11.00', composition: 'Diclofenac', group_name: 'Analgesics' },
+  { medicine_id: 16, generic_name: 'Levothyroxine 50mcg', price: '20.00', composition: 'Levothyroxine', group_name: 'Endocrine' },
+  { medicine_id: 17, generic_name: 'Metoprolol 50mg', price: '24.00', composition: 'Metoprolol', group_name: 'Cardiovascular' },
+  { medicine_id: 18, generic_name: 'Losartan 50mg', price: '26.00', composition: 'Losartan', group_name: 'Antihypertensives' },
+  { medicine_id: 19, generic_name: 'Salbutamol Inhaler 100mcg', price: '95.00', composition: 'Salbutamol', group_name: 'Respiratory' },
+  { medicine_id: 20, generic_name: 'Vitamin C 500mg', price: '15.00', composition: 'Ascorbic Acid', group_name: 'Vitamins' }
 ];
 
 const MOCK_INVENTORY = [
@@ -220,123 +244,345 @@ app.get("/api/inventory/:kendra_code", (req, res) => {
   });
 });
 
-// Modular function for Admin recommendations
-function analyzeInventoryForTransfers(inventoryData) {
-  const districts = {};
-  (inventoryData || []).forEach(item => {
-    if ((Number(item.quantity) || 0) <= 0) return; // Ignore zero-quantity inventory rows
-    if (!districts[item.district]) districts[item.district] = {};
-    if (!districts[item.district][item.medicine_id]) districts[item.district][item.medicine_id] = {};
-    if (!districts[item.district][item.medicine_id][item.kendra_code]) {
-       districts[item.district][item.medicine_id][item.kendra_code] = {
-           kendraName: item.kendra_name,
-           batches: [],
-           totalQty: 0
-       };
-    }
-    districts[item.district][item.medicine_id][item.kendra_code].batches.push(item);
-    districts[item.district][item.medicine_id][item.kendra_code].totalQty += item.quantity;
-  });
+// Modular Engine for Dynamic Smart Reorder & Intelligent Transfer Recommendation
+async function getSmartInventoryAnalysisData() {
+  let kendras = [], medicines = [], inventory = [], sales = [], transfers = [];
 
-  const recommendations = [];
-  const THRESHOLD = 20;
-
-  for (const dist in districts) {
-    for (const med in districts[dist]) {
-      const kendras = districts[dist][med];
-      const receivers = [];
-      const senders = []; 
-      
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      
-      for (const code in kendras) {
-          const kData = kendras[code];
-          if (kData.totalQty < THRESHOLD) {
-              receivers.push({ code, name: kData.kendraName, deficit: THRESHOLD - kData.totalQty });
-          }
-          
-          kData.batches.forEach(b => {
-              const exp = new Date(b.expiry_date);
-              exp.setHours(0,0,0,0);
-              const diffTime = exp - today;
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              
-              if (diffDays >= 0 && b.quantity > 0) {
-                 if (diffDays <= 45) { 
-                     // Expiring soon: Highest priority non-expired
-                     senders.push({ code, name: kData.kendraName, batch: b, available: b.quantity, reason: "Expiring Soon", score: 2 });
-                 } else if (kData.totalQty > 50) { 
-                     // Excess stock
-                     senders.push({ code, name: kData.kendraName, batch: b, available: b.quantity, reason: "Excess Stock", score: 1 });
-                 }
-              }
-          });
-      }
-      
-      senders.sort((a,b) => b.score - a.score);
-      
-      receivers.forEach(r => {
-          let needed = r.deficit;
-          for (const s of senders) {
-             if (s.code === r.code || s.available <= 0 || needed <= 0) continue;
-             let amountToTransfer = Math.min(s.available, needed);
-             if (amountToTransfer > 0) {
-                 recommendations.push({
-                     medicine_id: med,
-                     medicine_name: s.batch.medicine_name,
-                     batch_no: s.batch.batch_no,
-                     from_kendra_code: s.code,
-                     from_kendra_name: s.name,
-                     to_kendra_code: r.code,
-                     to_kendra_name: r.name,
-                     quantity: amountToTransfer,
-                     reason: s.reason
-                 });
-                 s.available -= amountToTransfer;
-                 needed -= amountToTransfer;
-             }
-          }
-      });
-    }
+  try {
+    kendras = await queryAsync("SELECT kendra_code, kendra_name, state, district, pin, address FROM kendras ORDER BY kendra_code ASC");
+  } catch (e) {
+    kendras = MOCK_KENDRAS;
   }
-  return recommendations;
-}
+  if (!kendras || kendras.length === 0) kendras = MOCK_KENDRAS;
 
-// API 4: Generate Admin Transfer Recommendations
-app.get("/api/admin/transfer-recommendations", (req, res) => {
-   const query = `
+  try {
+    medicines = await queryAsync("SELECT medicine_id, generic_name, price, composition, group_name FROM medicines ORDER BY medicine_id ASC");
+  } catch (e) {
+    medicines = MOCK_MEDICINES;
+  }
+  if (!medicines || medicines.length === 0) medicines = MOCK_MEDICINES;
+
+  try {
+    inventory = await queryAsync(`
       SELECT i.inventory_id, i.kendra_code, k.kendra_name, k.district,
-             i.medicine_id, m.generic_name as medicine_name,
-             i.batch_no, i.quantity, i.expiry_date
+             i.medicine_id, m.generic_name AS medicine_name,
+             i.batch_no, i.quantity, i.expiry_date, m.price
       FROM inventory i
       JOIN kendras k ON i.kendra_code = k.kendra_code
       JOIN medicines m ON i.medicine_id = m.medicine_id
-      WHERE i.quantity > 0
+      WHERE i.quantity > 0 AND i.expiry_date >= CURDATE()
       ORDER BY k.district, i.medicine_id, i.expiry_date ASC
-   `;
-   db.query(query, (err, results) => {
-       if (err || !results) {
-           console.warn("DB error in transfer-recommendations, running analysis on MOCK_INVENTORY:", err ? err.message : "no results");
-           const mockItems = MOCK_INVENTORY.filter(i => i.quantity > 0).map(item => {
-               const k = MOCK_KENDRAS.find(k => k.kendra_code === item.kendra_code) || { kendra_name: item.kendra_code, district: 'Bengaluru' };
-               return {
-                   inventory_id: item.medicine_id,
-                   kendra_code: item.kendra_code,
-                   kendra_name: k.kendra_name,
-                   district: k.district,
-                   medicine_id: item.medicine_id,
-                   medicine_name: item.medicine_name,
-                   batch_no: item.batch_no,
-                   quantity: item.quantity,
-                   expiry_date: item.expiry_date
-               };
-           });
-           return res.json(analyzeInventoryForTransfers(mockItems));
-       }
-       const recs = analyzeInventoryForTransfers(results);
-       res.json(recs);
-   });
+    `);
+  } catch (e) {
+    inventory = MOCK_INVENTORY.filter(i => (Number(i.quantity) || 0) > 0).map(i => {
+      const k = MOCK_KENDRAS.find(k => k.kendra_code === i.kendra_code) || { kendra_name: i.kendra_code, district: 'Bengaluru' };
+      return {
+        inventory_id: i.medicine_id,
+        kendra_code: i.kendra_code,
+        kendra_name: k.kendra_name,
+        district: k.district,
+        medicine_id: i.medicine_id,
+        medicine_name: i.medicine_name,
+        batch_no: i.batch_no,
+        quantity: i.quantity,
+        expiry_date: i.expiry_date,
+        price: i.price
+      };
+    });
+  }
+  if (!inventory || inventory.length === 0) {
+    inventory = MOCK_INVENTORY.filter(i => (Number(i.quantity) || 0) > 0).map(i => {
+      const k = MOCK_KENDRAS.find(k => k.kendra_code === i.kendra_code) || { kendra_name: i.kendra_code, district: 'Bengaluru' };
+      return {
+        inventory_id: i.medicine_id,
+        kendra_code: i.kendra_code,
+        kendra_name: k.kendra_name,
+        district: k.district,
+        medicine_id: i.medicine_id,
+        medicine_name: i.medicine_name,
+        batch_no: i.batch_no,
+        quantity: i.quantity,
+        expiry_date: i.expiry_date,
+        price: i.price
+      };
+    });
+  }
+
+  try {
+    sales = await queryAsync(`
+      SELECT kendra_code, medicine_id, SUM(quantity) as total_qty
+      FROM sales
+      WHERE sale_date >= DATE_SUB(NOW(), INTERVAL ${CONFIG.LOOKBACK_DAYS} DAY)
+      GROUP BY kendra_code, medicine_id
+    `);
+  } catch (e) {
+    const mockMap = {};
+    MOCK_SALES.forEach(s => {
+      const key = `${s.kendra_code}_${s.medicine_id}`;
+      mockMap[key] = (mockMap[key] || 0) + (Number(s.quantity) || 0);
+    });
+    sales = Object.keys(mockMap).map(key => {
+      const [k, m] = key.split('_');
+      return { kendra_code: k, medicine_id: parseInt(m, 10), total_qty: mockMap[key] };
+    });
+  }
+
+  try {
+    transfers = await queryAsync(`
+      SELECT from_kendra_code, to_kendra_code, medicine_id, batch_no, quantity, status
+      FROM transfers
+      WHERE status IN ('Approved', 'In Transit')
+    `);
+  } catch (e) {
+    transfers = MOCK_TRANSFERS.filter(t => t.status === 'Approved' || t.status === 'In Transit');
+  }
+
+  return runSmartInventoryEngine(kendras, medicines, inventory, sales, transfers);
+}
+
+function runSmartInventoryEngine(kendras, medicines, inventory, sales, transfers) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  // 1. Map 30-day Sales per (Kendra, Medicine)
+  const salesMap = {};
+  (sales || []).forEach(s => {
+    const key = `${s.kendra_code}_${s.medicine_id}`;
+    salesMap[key] = (salesMap[key] || 0) + (Number(s.total_qty) || 0);
+  });
+
+  // 2. Map Confirmed Incoming Stock per (to_kendra_code, medicine_id)
+  const incomingMap = {};
+  (transfers || []).forEach(t => {
+    if (t.status === 'Approved' || t.status === 'In Transit') {
+      const key = `${t.to_kendra_code}_${t.medicine_id}`;
+      incomingMap[key] = (incomingMap[key] || 0) + (Number(t.quantity) || 0);
+    }
+  });
+
+  // 3. Map Active Non-Expired Inventory Batches per (Kendra, Medicine)
+  const inventoryMap = {};
+  (inventory || []).forEach(item => {
+    if ((Number(item.quantity) || 0) <= 0) return;
+    const expDate = new Date(item.expiry_date);
+    expDate.setHours(0,0,0,0);
+    if (expDate < today) return; // Exclude expired active stock
+
+    const key = `${item.kendra_code}_${item.medicine_id}`;
+    if (!inventoryMap[key]) inventoryMap[key] = [];
+    inventoryMap[key].push({
+      inventory_id: item.inventory_id,
+      kendra_code: item.kendra_code,
+      kendra_name: item.kendra_name,
+      district: item.district,
+      medicine_id: item.medicine_id,
+      medicine_name: item.medicine_name,
+      batch_no: item.batch_no,
+      quantity: Number(item.quantity) || 0,
+      expiry_date: item.expiry_date,
+      price: item.price
+    });
+  });
+
+  // Build Kendra-Medicine Nodes
+  const nodes = {};
+  (kendras || []).forEach(k => {
+    (medicines || []).forEach(m => {
+      const key = `${k.kendra_code}_${m.medicine_id}`;
+      const sales30 = salesMap[key] || 0;
+      const adc = sales30 / CONFIG.LOOKBACK_DAYS;
+      
+      const batches = (inventoryMap[key] || []).map(b => ({ ...b }));
+      const activeStock = batches.reduce((sum, b) => sum + b.quantity, 0);
+      const incomingStock = incomingMap[key] || 0;
+      const effectiveStock = activeStock + incomingStock;
+
+      let safetyBuffer = 0;
+      let rop = 0;
+      let dsr = null;
+      let requirement = 0;
+      let status = 'NO ACTION';
+
+      if (adc > 0) {
+        safetyBuffer = Math.round(adc * CONFIG.SAFETY_BUFFER_DAYS);
+        rop = Math.round(adc * CONFIG.ROP_DAYS);
+        dsr = Number((activeStock / adc).toFixed(1));
+        if (effectiveStock < rop) {
+          requirement = rop - effectiveStock;
+          status = 'DEFICIT';
+        } else {
+          status = 'SAFE';
+        }
+      } else {
+        if (activeStock > 0) status = 'NO RECENT DEMAND';
+        else status = 'ZERO STOCK (NO RECENT DEMAND)';
+      }
+
+      const senderProtection = adc > 0 ? (adc * CONFIG.SAFETY_BUFFER_DAYS) : 0;
+      const senderSurplus = Math.max(0, activeStock - senderProtection);
+
+      nodes[key] = {
+        kendra_code: k.kendra_code,
+        kendra_name: k.kendra_name,
+        district: k.district,
+        medicine_id: m.medicine_id,
+        medicine_name: m.generic_name,
+        price: m.price,
+        adc: Number(adc.toFixed(2)),
+        sales_30d: sales30,
+        active_stock: activeStock,
+        confirmed_incoming: incomingStock,
+        effective_stock: effectiveStock,
+        safety_buffer: safetyBuffer,
+        rop: rop,
+        dsr: dsr,
+        requirement: requirement,
+        remaining_requirement: requirement,
+        status: status,
+        sender_protection: Number(senderProtection.toFixed(2)),
+        sender_surplus: Math.floor(senderSurplus),
+        remaining_surplus: Math.floor(senderSurplus),
+        batches: batches
+      };
+    });
+  });
+
+  const transferRecommendations = [];
+  const centralReorderRecommendations = [];
+
+  const districtMeds = {};
+  Object.values(nodes).forEach(node => {
+    if (!districtMeds[node.district]) districtMeds[node.district] = {};
+    if (!districtMeds[node.district][node.medicine_id]) districtMeds[node.district][node.medicine_id] = [];
+    districtMeds[node.district][node.medicine_id].push(node);
+  });
+
+  for (const dist in districtMeds) {
+    for (const medId in districtMeds[dist]) {
+      const groupNodes = districtMeds[dist][medId];
+      const receivers = groupNodes.filter(n => n.requirement > 0 && n.adc > 0);
+
+      receivers.forEach(rNode => {
+        const potentialSenders = groupNodes.filter(n => n.kendra_code !== rNode.kendra_code && n.active_stock > 0);
+        
+        const candidateOptions = [];
+
+        potentialSenders.forEach(sNode => {
+          (sNode.batches || []).forEach(b => {
+            if (b.quantity <= 0) return;
+            const exp = new Date(b.expiry_date);
+            exp.setHours(0,0,0,0);
+            const diffTime = exp - today;
+            const daysToExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (daysToExpiry <= 0) return;
+
+            const isNearExpiry = (daysToExpiry <= CONFIG.NEAR_EXPIRY_DAYS);
+            const maxConsumable = Math.floor(rNode.adc * daysToExpiry);
+
+            if (maxConsumable <= 0) return;
+
+            let maxTransferable = Math.min(b.quantity, sNode.remaining_surplus, rNode.remaining_requirement, maxConsumable);
+            
+            if (maxTransferable > 0) {
+              candidateOptions.push({
+                senderNode: sNode,
+                batch: b,
+                daysToExpiry: daysToExpiry,
+                isNearExpiry: isNearExpiry,
+                maxConsumable: maxConsumable,
+                feasibleQty: maxTransferable
+              });
+            }
+          });
+        });
+
+        candidateOptions.sort((a, b) => {
+          if (a.isNearExpiry !== b.isNearExpiry) return a.isNearExpiry ? -1 : 1;
+          if (a.daysToExpiry !== b.daysToExpiry) return a.daysToExpiry - b.daysToExpiry;
+          return b.senderNode.remaining_surplus - a.senderNode.remaining_surplus;
+        });
+
+        for (const opt of candidateOptions) {
+          if (rNode.remaining_requirement <= 0) break;
+
+          const sNode = opt.senderNode;
+          const b = opt.batch;
+
+          let availBatchQty = b.quantity;
+          let availSurplus = sNode.remaining_surplus;
+          let reqNeeded = rNode.remaining_requirement;
+
+          let qty = Math.min(availBatchQty, availSurplus, reqNeeded, opt.maxConsumable);
+          let threshold = opt.isNearExpiry ? CONFIG.MIN_URGENT_TRANSFER_QTY : CONFIG.MIN_TRANSFER_QTY;
+
+          if (qty >= threshold) {
+            transferRecommendations.push({
+              medicine_id: rNode.medicine_id,
+              medicine_name: rNode.medicine_name,
+              batch_no: b.batch_no,
+              from_kendra_code: sNode.kendra_code,
+              from_kendra_name: sNode.kendra_name,
+              to_kendra_code: rNode.kendra_code,
+              to_kendra_name: rNode.kendra_name,
+              quantity: qty,
+              reason: opt.isNearExpiry ? 'Expiring Soon (Consumable Surplus)' : 'Surplus Redistribution',
+              days_to_expiry: opt.daysToExpiry,
+              expiry_date: b.expiry_date
+            });
+
+            rNode.remaining_requirement -= qty;
+            sNode.remaining_surplus -= qty;
+            b.quantity -= qty;
+          }
+        }
+
+        if (rNode.remaining_requirement > 0) {
+          centralReorderRecommendations.push({
+            kendra_code: rNode.kendra_code,
+            kendra_name: rNode.kendra_name,
+            district: rNode.district,
+            medicine_id: rNode.medicine_id,
+            medicine_name: rNode.medicine_name,
+            current_active_stock: rNode.active_stock,
+            confirmed_incoming: rNode.confirmed_incoming,
+            effective_stock: rNode.effective_stock,
+            adc: Number(rNode.adc.toFixed(2)),
+            rop: rNode.rop,
+            requirement: rNode.remaining_requirement,
+            reason: "Reorder Required (No District Transfer Source Available)"
+          });
+        }
+      });
+    }
+  }
+
+  return {
+    nodes: Object.values(nodes),
+    transferRecommendations: transferRecommendations,
+    centralReorderRecommendations: centralReorderRecommendations
+  };
+}
+
+// API 4: Generate Admin Inter-Kendra Transfer Recommendations
+app.get("/api/admin/transfer-recommendations", async (req, res) => {
+  try {
+    const analysis = await getSmartInventoryAnalysisData();
+    res.json(analysis.transferRecommendations || []);
+  } catch (err) {
+    console.error("Error generating transfer recommendations:", err);
+    res.json([]);
+  }
+});
+
+// API 4B: Generate Central Warehouse Smart Reorder Recommendations
+app.get("/api/admin/smart-reorder", async (req, res) => {
+  try {
+    const analysis = await getSmartInventoryAnalysisData();
+    res.json(analysis.centralReorderRecommendations || []);
+  } catch (err) {
+    console.error("Error generating smart reorder recommendations:", err);
+    res.json([]);
+  }
 });
 
 // API 5: Fetch all transfers (Admin)
@@ -1003,11 +1249,15 @@ function performSalesWithPoolQuery(req, res, kCode, medicine_id, qtyNeeded, cust
 // API 12: Admin Summary KPIs & System Alerts
 app.get("/api/admin/summary", async (req, res) => {
   try {
+    const analysis = await getSmartInventoryAnalysisData();
+    const deficitKendras = new Set(
+      (analysis.nodes || []).filter(n => n.requirement > 0 && n.adc > 0).map(n => n.kendra_code)
+    ).size;
+
     const totalKendras = await queryAsync("SELECT COUNT(*) as cnt FROM kendras");
     const totalMedicines = await queryAsync("SELECT COUNT(*) as cnt FROM medicines");
     const expiringSoon = await queryAsync("SELECT COUNT(*) as cnt FROM inventory WHERE expiry_date >= CURDATE() AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND quantity > 0");
     const expiredStock = await queryAsync("SELECT COUNT(*) as cnt FROM inventory WHERE expiry_date < CURDATE() AND quantity > 0");
-    const lowStockKendras = await queryAsync("SELECT COUNT(DISTINCT kendra_code) as cnt FROM inventory WHERE quantity < 20");
     const transfersMonth = await queryAsync("SELECT COUNT(*) as cnt FROM transfers WHERE MONTH(transfer_date) = MONTH(CURDATE()) AND YEAR(transfer_date) = YEAR(CURDATE())");
 
     res.json({
@@ -1015,17 +1265,17 @@ app.get("/api/admin/summary", async (req, res) => {
       total_medicines: totalMedicines.length > 0 ? Number(totalMedicines[0].cnt) : 0,
       expiring_soon: expiringSoon.length > 0 ? Number(expiringSoon[0].cnt) : 0,
       expired_stock: expiredStock.length > 0 ? Number(expiredStock[0].cnt) : 0,
-      low_stock_kendras: lowStockKendras.length > 0 ? Number(lowStockKendras[0].cnt) : 0,
+      low_stock_kendras: deficitKendras,
       transfers_this_month: transfersMonth.length > 0 ? Number(transfersMonth[0].cnt) : 0
     });
   } catch (err) {
-    console.warn("DB error in /api/admin/summary, using fallback mock dataset:", err.message);
+    console.warn("DB error in /api/admin/summary, using fallback dataset:", err.message);
     res.json({
-      total_kendras: MOCK_KENDRAS.length || 3,
-      total_medicines: MOCK_MEDICINES.length || 7,
+      total_kendras: MOCK_KENDRAS.length || 20,
+      total_medicines: MOCK_MEDICINES.length || 20,
       expiring_soon: 1,
       expired_stock: 0,
-      low_stock_kendras: 1,
+      low_stock_kendras: 0,
       transfers_this_month: MOCK_TRANSFERS.length || 2
     });
   }
@@ -1034,12 +1284,19 @@ app.get("/api/admin/summary", async (req, res) => {
 // API 13: Admin Stock Overview per Kendra
 app.get("/api/admin/stock-overview", async (req, res) => {
   try {
+    const analysis = await getSmartInventoryAnalysisData();
+    const deficitPerKendra = {};
+    (analysis.nodes || []).forEach(n => {
+      if (n.requirement > 0 && n.adc > 0) {
+        deficitPerKendra[n.kendra_code] = (deficitPerKendra[n.kendra_code] || 0) + 1;
+      }
+    });
+
     const query = `
       SELECT k.kendra_code, k.kendra_name, k.district,
              COALESCE(SUM(i.quantity * m.price), 0) AS stock_value,
              COALESCE(SUM(CASE WHEN i.expiry_date < CURDATE() AND i.quantity > 0 THEN 1 ELSE 0 END), 0) AS expired_batches,
-             COALESCE(SUM(CASE WHEN i.expiry_date >= CURDATE() AND i.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND i.quantity > 0 THEN 1 ELSE 0 END), 0) AS expiring_soon,
-             COALESCE(SUM(CASE WHEN i.quantity < 20 THEN 1 ELSE 0 END), 0) AS low_stock_items
+             COALESCE(SUM(CASE WHEN i.expiry_date >= CURDATE() AND i.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND i.quantity > 0 THEN 1 ELSE 0 END), 0) AS expiring_soon
       FROM kendras k
       LEFT JOIN inventory i ON k.kendra_code = i.kendra_code
       LEFT JOIN medicines m ON i.medicine_id = m.medicine_id
@@ -1047,13 +1304,16 @@ app.get("/api/admin/stock-overview", async (req, res) => {
       ORDER BY k.kendra_code ASC
     `;
     const results = await queryAsync(query);
-    res.json(results);
+    const overview = (results || []).map(r => ({
+      ...r,
+      low_stock_items: deficitPerKendra[r.kendra_code] || 0
+    }));
+    res.json(overview);
   } catch (err) {
     console.warn("DB error in stock-overview, returning MOCK stock overview:", err.message);
     const mockOverview = MOCK_KENDRAS.map(k => {
       const items = MOCK_INVENTORY.filter(i => i.kendra_code === k.kendra_code);
       const stockVal = items.reduce((sum, item) => sum + (item.quantity * parseFloat(item.price || 0)), 0);
-      const lowStock = items.filter(i => i.quantity < 20).length;
       return {
         kendra_code: k.kendra_code,
         kendra_name: k.kendra_name,
@@ -1061,7 +1321,7 @@ app.get("/api/admin/stock-overview", async (req, res) => {
         stock_value: stockVal || 12500,
         expired_batches: 0,
         expiring_soon: 1,
-        low_stock_items: lowStock || 1
+        low_stock_items: 0
       };
     });
     res.json(mockOverview);
@@ -1114,7 +1374,7 @@ app.get("/api/admin/reports", async (req, res) => {
   }
 });
 
-// API 15: Kendra Staff Summary Metrics & Today's Sales
+// API 15: Kendra Staff Summary Metrics & Today's Sales with Consumption Analytics
 app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
   const kendra_code = req.params.kendra_code || "JA001";
   const todayStr = new Date().toDateString();
@@ -1123,32 +1383,38 @@ app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
     .reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
 
   try {
+    const analysis = await getSmartInventoryAnalysisData();
+    const kendraNodes = (analysis.nodes || []).filter(n => n.kendra_code === kendra_code);
+    
     const kNameRes = await queryAsync("SELECT kendra_name FROM kendras WHERE kendra_code = ?", [kendra_code]);
-    const skusRes = await queryAsync("SELECT COUNT(DISTINCT medicine_id) as total_skus FROM inventory WHERE kendra_code = ?", [kendra_code]);
-    const unitsRes = await queryAsync("SELECT COALESCE(SUM(quantity), 0) as total_units FROM inventory WHERE kendra_code = ?", [kendra_code]);
+    const skusRes = await queryAsync("SELECT COUNT(DISTINCT medicine_id) as total_skus FROM inventory WHERE kendra_code = ? AND quantity > 0", [kendra_code]);
+    const unitsRes = await queryAsync("SELECT COALESCE(SUM(quantity), 0) as total_units FROM inventory WHERE kendra_code = ? AND quantity > 0", [kendra_code]);
     const expiringRes = await queryAsync("SELECT COUNT(*) as expiring_soon FROM inventory WHERE kendra_code = ? AND expiry_date >= CURDATE() AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND quantity > 0", [kendra_code]);
-    const lowStockRes = await queryAsync("SELECT COUNT(*) as low_stock FROM inventory WHERE kendra_code = ? AND quantity < 20", [kendra_code]);
     const salesRes = await queryAsync("SELECT COALESCE(SUM(total_amount), 0) as today_sales FROM sales WHERE kendra_code = ? AND DATE(sale_date) = CURDATE()", [kendra_code]);
 
     const kendraObj = MOCK_KENDRAS.find(k => k.kendra_code === kendra_code);
     const defaultName = kendraObj ? kendraObj.kendra_name : `Jan Aushadhi Kendra (${kendra_code})`;
     const dbSales = salesRes.length > 0 ? Number(salesRes[0].today_sales) : 0;
 
+    const totalAdc = kendraNodes.reduce((sum, n) => sum + (n.adc || 0), 0);
+    const reorderCount = kendraNodes.filter(n => n.requirement > 0).length;
+
     res.json({
       kendra_name: (kNameRes.length > 0 && kNameRes[0].kendra_name) ? kNameRes[0].kendra_name : defaultName,
       total_skus: skusRes.length > 0 ? Number(skusRes[0].total_skus) : 0,
       total_units: unitsRes.length > 0 ? Number(unitsRes[0].total_units) : 0,
       expiring_soon: expiringRes.length > 0 ? Number(expiringRes[0].expiring_soon) : 0,
-      low_stock: lowStockRes.length > 0 ? Number(lowStockRes[0].low_stock) : 0,
+      low_stock: reorderCount,
+      reorder_needed_skus: reorderCount,
+      total_adc: Number(totalAdc.toFixed(2)),
       today_sales: dbSales + mockTodaySales
     });
   } catch (err) {
     console.warn("DB error in /api/kendra/summary, using fallback mock dataset:", err.message);
-    const mockItems = MOCK_INVENTORY.filter(item => item.kendra_code === kendra_code);
-    const itemsToUse = mockItems.length > 0 ? mockItems : MOCK_INVENTORY;
+    const mockItems = MOCK_INVENTORY.filter(item => item.kendra_code === kendra_code && item.quantity > 0);
+    const itemsToUse = mockItems.length > 0 ? mockItems : MOCK_INVENTORY.filter(i => i.quantity > 0);
     const totalSkus = new Set(itemsToUse.map(i => i.medicine_id)).size;
     const totalUnits = itemsToUse.reduce((acc, i) => acc + (Number(i.quantity) || 0), 0);
-    const lowStock = itemsToUse.filter(i => (Number(i.quantity) || 0) < 20).length;
     const kendraObj = MOCK_KENDRAS.find(k => k.kendra_code === kendra_code);
 
     res.json({
@@ -1156,7 +1422,9 @@ app.get("/api/kendra/summary/:kendra_code", async (req, res) => {
       total_skus: totalSkus || 4,
       total_units: totalUnits || 840,
       expiring_soon: 1,
-      low_stock: lowStock || 1,
+      low_stock: 1,
+      reorder_needed_skus: 1,
+      total_adc: 3.5,
       today_sales: mockTodaySales
     });
   }

@@ -85,7 +85,20 @@ INSERT INTO medicines (generic_name, price, composition, group_name) VALUES
 ('Metformin 500mg', 22.00, 'Metformin', 'Anti-diabetic'),
 ('Amoxicillin 500mg', 35.00, 'Amoxicillin', 'Antibiotics'),
 ('Cetirizine 10mg', 10.00, 'Cetirizine', 'Antihistamines'),
-('Pantoprazole 40mg', 25.00, 'Pantoprazole', 'Antacids');
+('Pantoprazole 40mg', 25.00, 'Pantoprazole', 'Antacids'),
+('Amlodipine 5mg', 12.00, 'Amlodipine', 'Antihypertensives'),
+('Telmisartan 40mg', 28.00, 'Telmisartan', 'Antihypertensives'),
+('Atorvastatin 10mg', 32.00, 'Atorvastatin', 'Cardiovascular'),
+('Omeprazole 20mg', 16.00, 'Omeprazole', 'Antacids'),
+('Ciprofloxacin 500mg', 34.00, 'Ciprofloxacin', 'Antibiotics'),
+('Amoxicillin-Clavulanate 625mg', 65.00, 'Amoxicillin + Clavulanic Acid', 'Antibiotics'),
+('Ibuprofen 400mg', 14.00, 'Ibuprofen', 'Analgesics'),
+('Diclofenac 50mg', 11.00, 'Diclofenac', 'Analgesics'),
+('Levothyroxine 50mcg', 20.00, 'Levothyroxine', 'Endocrine'),
+('Metoprolol 50mg', 24.00, 'Metoprolol', 'Cardiovascular'),
+('Losartan 50mg', 26.00, 'Losartan', 'Antihypertensives'),
+('Salbutamol Inhaler 100mcg', 95.00, 'Salbutamol', 'Respiratory'),
+('Vitamin C 500mg', 15.00, 'Ascorbic Acid', 'Vitamins');
 
 CREATE TABLE inventory (
     inventory_id INT PRIMARY KEY AUTO_INCREMENT,

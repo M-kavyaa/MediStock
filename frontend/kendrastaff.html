@@ -812,10 +812,8 @@
                 if (notifList) notifList.innerHTML = '';
                 
                 let fefoAssignedPerMedicine = {};
-                let lowStockCount = 0;
                 let expiredCount = 0;
                 let expiringSoonCount = 0;
-                const LOW_STOCK_THRESHOLD = 20; 
                 
                 data.forEach((item, index) => {
                     if ((Number(item.quantity) || 0) <= 0) return; // Ignore zero-quantity inventory rows
@@ -828,9 +826,6 @@
                     const diffTime = expiryDate - today;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
-                    const isLowStock = item.quantity > 0 && item.quantity < LOW_STOCK_THRESHOLD;
-                    if (isLowStock) lowStockCount++;
-                    
                     let statusText = 'Safe';
                     let statusColor = '#28a745'; 
                     
@@ -842,9 +837,6 @@
                         statusText = 'Expiring Soon';
                         statusColor = '#fd7e14';
                         expiringSoonCount++;
-                    } else if (isLowStock) {
-                        statusText = 'Low Stock';
-                        statusColor = '#d63384';
                     }
                     
                     let isFefo = false;
@@ -860,8 +852,6 @@
                         rowBg = 'background: #fff8eb;'; 
                     } else if (isFefo) {
                         rowBg = 'background: #fff3cd;'; 
-                    } else if (isLowStock) {
-                        rowBg = 'background: #f8e1ec;'; 
                     }
                     
                     const formattedDate = expiryDate.toLocaleDateString('en-GB').replace(/\//g, '-');
@@ -873,7 +863,7 @@
                         tr.innerHTML = `
                             <td>${item.medicine_name} ${isFefo ? '<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px; font-weight: bold; letter-spacing: 0.5px;">FEFO</span>' : ''}</td>
                             <td>${item.batch_no}</td>
-                            <td>${item.quantity} ${isLowStock ? '<span title="Low Stock Warning!" style="font-size: 12px; margin-left: 4px;">⚠️</span>' : ''}</td>
+                            <td>${item.quantity}</td>
                             <td>₹ ${item.price}</td>
                             <td>${formattedDate}</td>
                             <td><span style="background: #eef3f8; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; color: #143a5c;">Rack: ${item.rack || 'R-1'}, Shelf: ${item.shelf || 'S-1'}, Bin: ${item.bin || 'B-1'}</span></td>
