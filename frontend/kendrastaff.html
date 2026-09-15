@@ -818,6 +818,8 @@
                 const LOW_STOCK_THRESHOLD = 20; 
                 
                 data.forEach((item, index) => {
+                    if ((Number(item.quantity) || 0) <= 0) return; // Ignore zero-quantity inventory rows
+                    
                     const expiryDate = new Date(item.expiry_date);
                     const today = new Date();
                     expiryDate.setHours(0,0,0,0);
@@ -826,7 +828,7 @@
                     const diffTime = expiryDate - today;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
-                    const isLowStock = item.quantity < LOW_STOCK_THRESHOLD;
+                    const isLowStock = item.quantity > 0 && item.quantity < LOW_STOCK_THRESHOLD;
                     if (isLowStock) lowStockCount++;
                     
                     let statusText = 'Safe';

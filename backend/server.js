@@ -185,7 +185,7 @@ app.post("/api/login", (req, res) => {
   });
 });
 
-// API 3: Get Inventory for a Kendra
+// API 3: Get Inventory for a Kendra (Active stock only: quantity > 0)
 app.get("/api/inventory/:kendra_code", (req, res) => {
   const kendra_code = req.params.kendra_code;
   const query = `
@@ -193,7 +193,7 @@ app.get("/api/inventory/:kendra_code", (req, res) => {
            COALESCE(i.rack, 'R-1') as rack, COALESCE(i.shelf, 'S-1') as shelf, COALESCE(i.bin, 'B-1') as bin
     FROM inventory i
     JOIN medicines m ON i.medicine_id = m.medicine_id
-    WHERE i.kendra_code = ?
+    WHERE i.kendra_code = ? AND i.quantity > 0
     ORDER BY i.expiry_date ASC
   `;
   db.query(query, [kendra_code], (err, results) => {
@@ -203,14 +203,14 @@ app.get("/api/inventory/:kendra_code", (req, res) => {
                'R-1' as rack, 'S-1' as shelf, 'B-1' as bin
         FROM inventory i
         JOIN medicines m ON i.medicine_id = m.medicine_id
-        WHERE i.kendra_code = ?
+        WHERE i.kendra_code = ? AND i.quantity > 0
         ORDER BY i.expiry_date ASC
       `;
       db.query(fallbackQuery, [kendra_code], (fbErr, fbResults) => {
         if (fbErr) {
           console.warn("DB query error for inventory, using MOCK_INVENTORY fallback:", fbErr.message);
-          const filtered = MOCK_INVENTORY.filter(item => item.kendra_code === kendra_code);
-          return res.json(filtered.length > 0 ? filtered : MOCK_INVENTORY);
+          const filtered = MOCK_INVENTORY.filter(item => item.kendra_code === kendra_code && item.quantity > 0);
+          return res.json(filtered);
         }
         res.json(fbResults || []);
       });
@@ -223,7 +223,8 @@ app.get("/api/inventory/:kendra_code", (req, res) => {
 // Modular function for Admin recommendations
 function analyzeInventoryForTransfers(inventoryData) {
   const districts = {};
-  inventoryData.forEach(item => {
+  (inventoryData || []).forEach(item => {
+    if ((Number(item.quantity) || 0) <= 0) return; // Ignore zero-quantity inventory rows
     if (!districts[item.district]) districts[item.district] = {};
     if (!districts[item.district][item.medicine_id]) districts[item.district][item.medicine_id] = {};
     if (!districts[item.district][item.medicine_id][item.kendra_code]) {
@@ -311,12 +312,13 @@ app.get("/api/admin/transfer-recommendations", (req, res) => {
       FROM inventory i
       JOIN kendras k ON i.kendra_code = k.kendra_code
       JOIN medicines m ON i.medicine_id = m.medicine_id
+      WHERE i.quantity > 0
       ORDER BY k.district, i.medicine_id, i.expiry_date ASC
    `;
    db.query(query, (err, results) => {
        if (err || !results) {
            console.warn("DB error in transfer-recommendations, running analysis on MOCK_INVENTORY:", err ? err.message : "no results");
-           const mockItems = MOCK_INVENTORY.map(item => {
+           const mockItems = MOCK_INVENTORY.filter(i => i.quantity > 0).map(item => {
                const k = MOCK_KENDRAS.find(k => k.kendra_code === item.kendra_code) || { kendra_name: item.kendra_code, district: 'Bengaluru' };
                return {
                    inventory_id: item.medicine_id,
@@ -412,6 +414,54 @@ app.post("/api/transfers/approve", (req, res) => {
    });
 });
 
+// Helper to find next available unique location for active stock at a Kendra
+function findAvailableLocationSlot(executor, kendraCode, preferredRack, preferredShelf, preferredBin, callback) {
+  const pRack = (preferredRack && preferredRack.trim()) ? preferredRack.trim() : 'R-1';
+  const pShelf = (preferredShelf && preferredShelf.trim()) ? preferredShelf.trim() : 'S-1';
+  const pBin = (preferredBin && preferredBin.trim()) ? preferredBin.trim() : 'B-1';
+
+  if (!executor || typeof executor.query !== 'function') {
+    // Fallback in-memory check against MOCK_INVENTORY
+    const occupied = new Set(
+      MOCK_INVENTORY
+        .filter(i => i.kendra_code === kendraCode && i.quantity > 0)
+        .map(i => `${i.rack || 'R-1'}|${i.shelf || 'S-1'}|${i.bin || 'B-1'}`)
+    );
+    const prefKey = `${pRack}|${pShelf}|${pBin}`;
+    if (!occupied.has(prefKey)) return callback(pRack, pShelf, pBin);
+
+    for (let r = 1; r <= 10; r++) {
+      for (let s = 1; s <= 5; s++) {
+        for (let b = 1; b <= 10; b++) {
+          let key = `R-${r}|S-${s}|B-${b}`;
+          if (!occupied.has(key)) return callback(`R-${r}`, `S-${s}`, `B-${b}`);
+        }
+      }
+    }
+    return callback('R-99', 'S-99', 'B-99');
+  }
+
+  const checkSql = `SELECT rack, shelf, bin FROM inventory WHERE kendra_code = ? AND quantity > 0`;
+  executor.query(checkSql, [kendraCode], (err, rows) => {
+    if (err || !rows) return callback(pRack, pShelf, pBin);
+    const occupied = new Set(
+      rows.map(r => `${r.rack || 'R-1'}|${r.shelf || 'S-1'}|${r.bin || 'B-1'}`)
+    );
+    const prefKey = `${pRack}|${pShelf}|${pBin}`;
+    if (!occupied.has(prefKey)) return callback(pRack, pShelf, pBin);
+
+    for (let r = 1; r <= 10; r++) {
+      for (let s = 1; s <= 5; s++) {
+        for (let b = 1; b <= 10; b++) {
+          let key = `R-${r}|S-${s}|B-${b}`;
+          if (!occupied.has(key)) return callback(`R-${r}`, `S-${s}`, `B-${b}`);
+        }
+      }
+    }
+    callback('R-99', 'S-99', 'B-99');
+  });
+}
+
 // API 8: Kendra Advances Transfer Status (Dispatch/Receive/Cancel)
 app.put("/api/transfers/:id/status", (req, res) => {
    const { id } = req.params;
@@ -421,7 +471,29 @@ app.put("/api/transfers/:id/status", (req, res) => {
        if (err || !conn) {
            console.warn("DB Connection error on transfer status update, updating MOCK_TRANSFERS:", err ? err.message : "No conn");
            const mockT = MOCK_TRANSFERS.find(t => t.transfer_id == id);
-           if (mockT) mockT.status = status;
+           if (mockT) {
+             mockT.status = status;
+             if (status === 'Completed') {
+               const srcBatch = MOCK_INVENTORY.find(i => i.kendra_code === mockT.from_kendra_code && i.medicine_id == mockT.medicine_id && i.batch_no === mockT.batch_no);
+               const destBatch = MOCK_INVENTORY.find(i => i.kendra_code === mockT.to_kendra_code && i.medicine_id == mockT.medicine_id && i.batch_no === mockT.batch_no);
+               if (destBatch) {
+                 destBatch.quantity += mockT.quantity;
+               } else {
+                 findAvailableLocationSlot(null, mockT.to_kendra_code, srcBatch ? srcBatch.rack : 'R-1', srcBatch ? srcBatch.shelf : 'S-1', srcBatch ? srcBatch.bin : 'B-1', (availR, availS, availB) => {
+                   MOCK_INVENTORY.push({
+                     kendra_code: mockT.to_kendra_code,
+                     medicine_id: mockT.medicine_id,
+                     medicine_name: mockT.medicine_name,
+                     batch_no: mockT.batch_no,
+                     quantity: mockT.quantity,
+                     expiry_date: srcBatch ? srcBatch.expiry_date : '2027-12-31',
+                     price: srcBatch ? srcBatch.price : '20.00',
+                     rack: availR, shelf: availS, bin: availB
+                   });
+                 });
+               }
+             }
+           }
            return res.json({ success: true, message: "Status updated successfully" });
        }
        
@@ -502,14 +574,16 @@ app.put("/api/transfers/:id/status", (req, res) => {
                            } else {
                                conn.query(`SELECT expiry_date, rack, shelf, bin FROM inventory WHERE batch_no=? LIMIT 1`, [transfer.batch_no], (err, dtRes) => {
                                   const expDate = (dtRes && dtRes.length > 0) ? dtRes[0].expiry_date : new Date();
-                                  const rVal = (dtRes && dtRes.length > 0) ? dtRes[0].rack : 'R-1';
-                                  const sVal = (dtRes && dtRes.length > 0) ? dtRes[0].shelf : 'S-1';
-                                  const bVal = (dtRes && dtRes.length > 0) ? dtRes[0].bin : 'B-1';
+                                  const pRack = (dtRes && dtRes.length > 0) ? dtRes[0].rack : 'R-1';
+                                  const pShelf = (dtRes && dtRes.length > 0) ? dtRes[0].shelf : 'S-1';
+                                  const pBin = (dtRes && dtRes.length > 0) ? dtRes[0].bin : 'B-1';
                                   
-                                  conn.query(`INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date, rack, shelf, bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-                                  [transfer.to_kendra_code, transfer.medicine_id, transfer.batch_no, transfer.quantity, expDate, rVal, sVal, bVal], (err) => {
-                                      if (err) return rollback(500, err);
-                                      finalizeComplete();
+                                  findAvailableLocationSlot(conn, transfer.to_kendra_code, pRack, pShelf, pBin, (availRack, availShelf, availBin) => {
+                                    conn.query(`INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date, rack, shelf, bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+                                    [transfer.to_kendra_code, transfer.medicine_id, transfer.batch_no, transfer.quantity, expDate, availRack, availShelf, availBin], (err) => {
+                                        if (err) return rollback(500, err);
+                                        finalizeComplete();
+                                    });
                                   });
                                });
                            }
@@ -560,11 +634,32 @@ app.post("/api/inventory/add", (req, res) => {
     if (selectedExpiry < today) {
         return res.status(400).json({ error: "Cannot add expired batches." });
     }
+
+    const checkLocConflictDB = (cb) => {
+      const locSql = `SELECT batch_no FROM inventory WHERE kendra_code=? AND rack=? AND shelf=? AND bin=? AND quantity > 0 AND NOT (medicine_id=? AND batch_no=?)`;
+      db.query(locSql, [kCode, rVal, sVal, bVal, medicine_id, batch_no], (lErr, lRes) => {
+        if (!lErr && lRes && lRes.length > 0) {
+          return cb(`Physical location Rack: ${rVal}, Shelf: ${sVal}, Bin: ${bVal} is already occupied by active batch '${lRes[0].batch_no}' at this Kendra. Please choose another location.`);
+        }
+        cb(null);
+      });
+    };
+
+    const checkLocConflictMock = () => {
+      const occ = MOCK_INVENTORY.find(i => i.kendra_code === kCode && i.quantity > 0 && i.rack === rVal && i.shelf === sVal && i.bin === bVal && !(i.medicine_id == medicine_id && i.batch_no === batch_no));
+      if (occ) {
+        return `Physical location Rack: ${rVal}, Shelf: ${sVal}, Bin: ${bVal} is already occupied by active batch '${occ.batch_no}' at this Kendra. Please choose another location.`;
+      }
+      return null;
+    };
     
     const checkQuery = `SELECT * FROM inventory WHERE kendra_code=? AND medicine_id=? AND batch_no=?`;
     db.query(checkQuery, [kCode, medicine_id, batch_no], (err, results) => {
         if (err || !results) {
             console.warn("DB connection error on add stock, updating MOCK_INVENTORY:", err ? err.message : "no results");
+            const conflictMsg = checkLocConflictMock();
+            if (conflictMsg) return res.status(400).json({ error: conflictMsg });
+
             const medObj = MOCK_MEDICINES.find(m => m.medicine_id == medicine_id);
             const medName = medObj ? medObj.generic_name : 'Medicine #' + medicine_id;
             const price = medObj ? medObj.price : '20.00';
@@ -592,19 +687,23 @@ app.post("/api/inventory/add", (req, res) => {
             return res.json({ success: true, message: "Stock Added Successfully!" });
         }
         
-        if (results.length > 0) {
-            const updateQuery = `UPDATE inventory SET quantity = quantity + ?, rack = ?, shelf = ?, bin = ? WHERE kendra_code=? AND medicine_id=? AND batch_no=?`;
-            db.query(updateQuery, [qty, rVal, sVal, bVal, kCode, medicine_id, batch_no], (uErr) => {
-                if (uErr) return res.status(500).json({ error: uErr.message || "Failed to update stock" });
-                res.json({ success: true, message: "Stock Added Successfully!" });
-            });
-        } else {
-            const insertQuery = `INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date, rack, shelf, bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-            db.query(insertQuery, [kCode, medicine_id, batch_no, qty, expiry_date, rVal, sVal, bVal], (iErr) => {
-                if (iErr) return res.status(500).json({ error: iErr.message || "Failed to insert stock" });
-                res.json({ success: true, message: "Stock Added Successfully!" });
-            });
-        }
+        checkLocConflictDB((conflictMsg) => {
+            if (conflictMsg) return res.status(400).json({ error: conflictMsg });
+
+            if (results.length > 0) {
+                const updateQuery = `UPDATE inventory SET quantity = quantity + ?, rack = ?, shelf = ?, bin = ? WHERE kendra_code=? AND medicine_id=? AND batch_no=?`;
+                db.query(updateQuery, [qty, rVal, sVal, bVal, kCode, medicine_id, batch_no], (uErr) => {
+                    if (uErr) return res.status(500).json({ error: uErr.message || "Failed to update stock" });
+                    res.json({ success: true, message: "Stock Added Successfully!" });
+                });
+            } else {
+                const insertQuery = `INSERT INTO inventory (kendra_code, medicine_id, batch_no, quantity, expiry_date, rack, shelf, bin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+                db.query(insertQuery, [kCode, medicine_id, batch_no, qty, expiry_date, rVal, sVal, bVal], (iErr) => {
+                    if (iErr) return res.status(500).json({ error: iErr.message || "Failed to insert stock" });
+                    res.json({ success: true, message: "Stock Added Successfully!" });
+                });
+            }
+        });
     });
 });
 
