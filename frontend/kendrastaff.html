@@ -761,6 +761,7 @@
                 const res = await fetch(`${API_BASE_URL}/api/kendra/summary/${kendraCode}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
+                window.currentKendraSummary = data;
                 
                 const headerBadge = document.getElementById('kendra-header-badge');
                 if (headerBadge && data.kendra_name) headerBadge.innerText = `${kendraCode} - ${data.kendra_name}`;
@@ -885,8 +886,8 @@
                         overviewBody.appendChild(tr);
                     }
 
-                    // Populate Alerts if Low Stock or Expiring
-                    if (alertsBox && (isLowStock || diffDays <= 30)) {
+                    // Populate Alerts if Expiring Soon or Expired
+                    if (alertsBox && diffDays <= 30) {
                         const alertDiv = document.createElement('div');
                         alertDiv.className = 'low-stock-item';
                         alertDiv.innerHTML = `<strong>${item.medicine_name}</strong> (${item.batch_no}): ${item.quantity} units - <span style="color: ${statusColor};">${statusText}</span>`;
@@ -899,6 +900,7 @@
                 }
 
                 // Dynamic Notifications
+                const lowStockCount = window.currentKendraSummary ? (window.currentKendraSummary.low_stock || 0) : 0;
                 if (notifList) {
                     if (expiredCount > 0) {
                         notifList.innerHTML += `<li><span>🚨 <strong>${expiredCount} expired batch(es)</strong> detected in stock.</span><span class="time">Active Alert</span></li>`;
@@ -907,7 +909,7 @@
                         notifList.innerHTML += `<li><span>⚠️ <strong>${expiringSoonCount} batch(es)</strong> expiring within 30 days.</span><span class="time">Active Alert</span></li>`;
                     }
                     if (lowStockCount > 0) {
-                        notifList.innerHTML += `<li><span>📉 <strong>${lowStockCount} batch(es)</strong> below minimum threshold.</span><span class="time">Active Alert</span></li>`;
+                        notifList.innerHTML += `<li><span>📉 <strong>${lowStockCount} medicine(s)</strong> require dynamic smart reorder.</span><span class="time">Active Alert</span></li>`;
                     }
                     notifList.innerHTML += `<li><span>✅ Kendra inventory synced with central database.</span><span class="time">Just now</span></li>`;
                 }
